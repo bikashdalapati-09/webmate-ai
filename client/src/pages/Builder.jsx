@@ -27,8 +27,12 @@ import {
   XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Builder = ({ user, setUser }) => {
+  // Move useNavigate hook to the top level before any conditional returns
+  const navigate = useNavigate();
+
   // Mode State: Controlled by Mongoose `user.isSetupCompleted` flag
   const [isEditing, setIsEditing] = useState(false);
 
@@ -151,6 +155,16 @@ const Builder = ({ user, setUser }) => {
         { withCredentials: true }
       );
 
+      if (!response.data.success && response.data.message) {
+        toast.error(response.data.message);
+        setStatusMsg({
+          type: 'error',
+          text: response.data.message
+        });
+        setLoading(false);
+        return;
+      }
+
       if (setUser && response.data?.user) {
         setUser(response.data.user);
       }
@@ -164,10 +178,12 @@ const Builder = ({ user, setUser }) => {
       });
     } catch (error) {
       console.error('Save Assistant Error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save assistant settings. Please try again.';
       setStatusMsg({
         type: 'error',
-        text: error.response?.data?.message || 'Failed to save assistant settings. Please try again.'
+        text: errorMessage
       });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -185,10 +201,24 @@ const Builder = ({ user, setUser }) => {
 
   // Computed usage statistics matching Mongoose User Schema
   const planType = user?.plan || 'Free';
-  const requestLimit = user?.requestLimit || 200;
+  
+  // Plan-based message limits
+  const isProPlan = planType.toLowerCase() === 'pro';
+  const requestLimit = isProPlan ? Infinity : (user?.requestLimit && user.requestLimit > 0 ? user.requestLimit : 200);
   const totalMessages = user?.totalMessages || 0;
-  const messagesLeft = Math.max(0, requestLimit - totalMessages);
-  const usagePercentage = Math.min(100, Math.round((totalMessages / requestLimit) * 100));
+  
+  // Messages remaining
+  const messagesLeft = isProPlan ? '∞' : Math.max(0, requestLimit - totalMessages);
+  
+  // Usage percentage calculated correctly (0 messages used = 0%, 200 used = 100%)
+  const usagePercentage = isProPlan 
+    ? 0 
+    : Math.min(100, Math.max(0, Math.round((totalMessages / requestLimit) * 100)));
+
+  // Pro plan expiry (1 month from plan start)
+  const planStartDate = user?.planStartDate ? new Date(user.planStartDate) : null;
+  const planExpiryDate = planStartDate ? new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const daysRemainingInPlan = planExpiryDate ? Math.ceil((planExpiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
   const themes = [
     { id: 'light', label: 'Light', color: 'bg-slate-100 border-slate-300 text-slate-800' },
@@ -221,7 +251,7 @@ const Builder = ({ user, setUser }) => {
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-black text-slate-900">{user?.assistantName || formData.assistantName}</h1>
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                    planType === 'Pro' 
+                    isProPlan 
                       ? 'bg-amber-100 text-amber-800 border-amber-300' 
                       : 'bg-slate-200 text-slate-700 border-slate-300'
                   }`}>
@@ -264,46 +294,84 @@ const Builder = ({ user, setUser }) => {
               </p>
             </div>
 
-            {/* Messages Remaining Metric */}
-            <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 flex flex-col justify-between space-y-2">
+            {/* Messages Usage Metric */}
+            <div className={`p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 flex flex-col justify-between space-y-3 ${isProPlan ? 'ring-2 ring-emerald-300' : ''}`}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-xs font-black uppercase tracking-wider">Messages Remaining</span>
+                  <span className="text-xs font-black uppercase tracking-wider">Usage Limit</span>
                   <MessageSquare className="w-4 h-4 text-indigo-600" />
                 </div>
-                <div className="flex items-baseline gap-2 pt-1">
-                  <span className="text-2xl font-black text-slate-900">{messagesLeft}</span>
-                  <span className="text-xs font-bold text-slate-400">/ {requestLimit} limit</span>
+                <div className="flex items-baseline justify-between pt-1">
+                  {isProPlan ? (
+                    <>
+                      <span className="text-2xl font-black text-emerald-600">Unlimited</span>
+                      <span className="text-xs font-bold text-slate-400">Pro Plan</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-black text-slate-900">
+                        {totalMessages} <span className="text-sm font-bold text-slate-400">/ {requestLimit}</span>
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">
+                        {messagesLeft} left
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
-              
-              {/* Custom Usage Bar */}
-              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-2">
-                <div 
-                  className={`h-full transition-all duration-300 ${usagePercentage > 85 ? 'bg-rose-500' : 'bg-indigo-600'}`} 
-                  style={{ width: `${usagePercentage}%` }}
-                />
-              </div>
+
+              {/* Progress Bar & Status Text */}
+              {isProPlan ? (
+                <div className="text-[10px] font-bold text-emerald-600 pt-2 flex items-center justify-between">
+                  <span>✓ Unlimited usage active</span>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="w-full h-2.5 rounded-full bg-[#e0e5ec] shadow-[inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff] overflow-hidden p-0.5">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ease-out ${
+                        usagePercentage >= 90 ? 'bg-rose-500' : 'bg-indigo-600'
+                      }`} 
+                      style={{ width: `${usagePercentage}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 px-0.5">
+                    <span>{usagePercentage}% used</span>
+                    <span>{messagesLeft} left</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Active Tier Callout */}
-            <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 flex flex-col justify-between space-y-2">
+            <div className={`p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 flex flex-col justify-between space-y-2 ${isProPlan ? 'ring-2 ring-emerald-300' : ''}`}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-slate-500">
                   <span className="text-xs font-black uppercase tracking-wider">Current Tier</span>
                   <Zap className="w-4 h-4 text-indigo-600" />
                 </div>
                 <div className="text-xl font-black text-slate-900 pt-1">
-                  {planType} Tier
+                  {planType} Plan
                 </div>
               </div>
-              {planType === 'Free' ? (
-                <p className="text-[11px] font-bold text-indigo-600 cursor-pointer hover:underline pt-2">
-                  Upgrade to Pro for unlimited usage & custom domain branding →
-                </p>
+              {isProPlan ? (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold text-emerald-600 pt-2">
+                    ✓ Unlimited messages & premium features
+                  </p>
+                  {daysRemainingInPlan && daysRemainingInPlan > 0 ? (
+                    <p className="text-[10px] font-medium text-emerald-500">
+                      Valid for {daysRemainingInPlan} more days
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-medium text-amber-600">
+                      Plan expires soon. Renew to maintain access.
+                    </p>
+                  )}
+                </div>
               ) : (
-                <p className="text-[11px] font-bold text-emerald-600 pt-2">
-                  ✓ Premium response speeds & unlimited queries enabled
+                <p onClick={() => navigate("/billing")} className="text-[11px] font-bold text-indigo-600 cursor-pointer hover:underline pt-2">
+                  Upgrade to Pro for unlimited usage & custom domain branding →
                 </p>
               )}
             </div>

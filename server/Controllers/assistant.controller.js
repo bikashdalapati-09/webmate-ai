@@ -1,4 +1,5 @@
 import User from "../Models/user.model.js";
+import { aiProjectResponse } from "../services/aiProject.js";
 import { aiService } from "../services/aiService.js";
 
 export const getAssistantConfig = async (req, res) => {
@@ -60,7 +61,11 @@ export const askAssistant = async (req, res) => {
     }
 
     // Double check spelling with your Mongoose schema (e.g. proExipireAt vs proExpiresAt)
-    if (user.plan === "pro" && user.proExipireAt && new Date(user.proExipireAt) < new Date()) {
+    if (
+      user.plan === "pro" &&
+      user.proExipireAt &&
+      new Date(user.proExipireAt) < new Date()
+    ) {
       user.plan = "free";
       await user.save();
       return res.status(403).json({
@@ -83,20 +88,24 @@ export const askAssistant = async (req, res) => {
       ];
 
       const wantsNavigation = navigationWords.some((word) =>
-        cleanMessage.startsWith(word)
+        cleanMessage.startsWith(word),
       );
 
       if (wantsNavigation) {
         const matchedPage = user.pages?.find((page) =>
           page.keywords.some((keyword) =>
-            cleanMessage.includes(keyword.toLowerCase())
-          )
+            cleanMessage.includes(keyword.toLowerCase()),
+          ),
         );
 
         if (matchedPage) {
-          const normalizePath = (p) => (p ? p.replace(/\/+$/, "").toLowerCase() || "/" : "");
+          const normalizePath = (p) =>
+            p ? p.replace(/\/+$/, "").toLowerCase() || "/" : "";
 
-          if (currentPath && normalizePath(currentPath) === normalizePath(matchedPage.path)) {
+          if (
+            currentPath &&
+            normalizePath(currentPath) === normalizePath(matchedPage.path)
+          ) {
             return res.json({
               success: true,
               response: `${matchedPage.name} is already opened`,
@@ -114,11 +123,20 @@ export const askAssistant = async (req, res) => {
     }
 
     // Call LangGraph Service (Pass object payload)
-    const aiResult = await aiService({
-      query: message,
-      user,
-      apiKey: user.geminiApiKey,
-    });
+    let aiResult;
+    try {
+      aiResult = await aiService({
+        query: message,
+        user,
+        apiKey: user.geminiApiKey,
+      });
+    } catch (aiError) {
+      console.error("AI Service Error:", aiError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process AI request. Please check your API key.",
+      });
+    }
 
     if (!aiResult.success) {
       return res.status(aiResult.status || 500).json({
@@ -141,7 +159,9 @@ export const askAssistant = async (req, res) => {
     console.error("Ask Assistant Controller Error:", error);
     return res.status(500).json({
       success: false,
-      message: "AI assistant error",
+      message: error?.message || "AI assistant error. Please try again.",
     });
   }
 };
+
+

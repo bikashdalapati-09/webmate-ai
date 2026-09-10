@@ -11,15 +11,19 @@ const State = Annotation.Root({
 
 const aiNode = async (state) => {
   const { user, apiKey, query } = state;
-  console.log(apiKey)
+  
+  try {
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error("Invalid API key provided");
+    }
 
-  const llm = new ChatGoogleGenerativeAI({
-    apiKey: apiKey,
-    model: "gemini-3.5-flash-lite", // Retained original model name
-    temperature: 0.3,
-  });
+    const llm = new ChatGoogleGenerativeAI({
+      apiKey: apiKey,
+      model: "gemini-3.5-flash-lite",
+      temperature: 0.3,
+    });
 
-  const systemPrompt = `
+    const systemPrompt = `
 You are ${user.assistantName || "Assistant"}.
 
 Business Name: ${user.businessName || "N/A"}
@@ -36,16 +40,20 @@ Rules:
 - Keep responses short for quick voice playback
 `;
 
-  const messages = [
-    new SystemMessage(systemPrompt),
-    new HumanMessage(query),
-  ];
+    const messages = [
+      new SystemMessage(systemPrompt),
+      new HumanMessage(query),
+    ];
 
-  const response = await llm.invoke(messages);
+    const response = await llm.invoke(messages);
 
-  return {
-    response: response?.content || null,
-  };
+    return {
+      response: response?.content || null,
+    };
+  } catch (nodeError) {
+    console.error("AI Node Error:", nodeError);
+    throw nodeError;
+  }
 };
 
 const graph = new StateGraph(State)
@@ -55,7 +63,7 @@ const graph = new StateGraph(State)
   .compile();
 
 export const aiService = async ({ query, user, apiKey }) => {
-  if (!apiKey) {
+  if (!apiKey || apiKey.trim() === '') {
     user.geminiStatus = "invalid";
     await user.save();
 
@@ -74,10 +82,13 @@ export const aiService = async ({ query, user, apiKey }) => {
     });
 
     if (!result?.response) {
+      user.geminiStatus = "invalid";
+      await user.save();
+      
       return {
         success: false,
-        status: 500,
-        error: "Gemini did not return a response.",
+        status: 400,
+        error: "Invalid API key or Gemini did not return a response.",
       };
     }
 
@@ -90,40 +101,54 @@ export const aiService = async ({ query, user, apiKey }) => {
       response: result.response,
     };
   } catch (error) {
-    console.error("Gemini Service Error:", error);
+    console.error("Gemini Service Error:", error?.message || error);
 
-    const status =
-      error?.status ||
-      error?.statusCode ||
-      error?.response?.status ||
-      500;
+    // Handle various error types
+    let status = 500;
+    let errorMessage = "Gemini request failed.";
 
-    if (status === 429) {
+    // Check for API key errors
+    if (error?.message?.includes("API key") || 
+        error?.message?.includes("authentication") ||
+        error?.message?.includes("401") ||
+        error?.message?.includes("403")) {
+      status = 401;
+      errorMessage = "Invalid Gemini API key. Please check your key and try again.";
+      user.geminiStatus = "invalid";
+    } 
+    // Check for quota errors
+    else if (error?.message?.includes("429") || 
+             error?.message?.includes("quota")) {
+      status = 429;
+      errorMessage = "Gemini quota exceeded. Please try again later.";
       user.geminiStatus = "quota_exceed";
-      await user.save();
-
-      return {
-        success: false,
-        status: 429,
-        error: "Gemini quota exceeded.",
-      };
+    }
+    // Check for rate limit errors
+    else if (error?.message?.includes("rate limit")) {
+      status = 429;
+      errorMessage = "Too many requests. Please try again in a moment.";
+      user.geminiStatus = "quota_exceed";
+    }
+    // Default invalid key error
+    else {
+      status = error?.status || error?.statusCode || error?.response?.status || 500;
+      
+      if (status === 401 || status === 403) {
+        errorMessage = "Invalid Gemini API key. Please check your key and try again.";
+        user.geminiStatus = "invalid";
+      }
     }
 
-    if (status === 401 || status === 403) {
-      user.geminiStatus = "invalid";
+    try {
       await user.save();
-
-      return {
-        success: false,
-        status,
-        error: "Invalid Gemini API key.",
-      };
+    } catch (saveError) {
+      console.error("Error saving user status:", saveError);
     }
 
     return {
       success: false,
       status,
-      error: "Gemini request failed.",
+      error: errorMessage,
     };
   }
 };

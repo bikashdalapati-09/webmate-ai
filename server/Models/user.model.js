@@ -74,8 +74,16 @@ const userSchema = new mongoose.Schema({
     },
     plan: {
         type: String,
-        enum: ["free", "pro"],
-        default: "free"
+        enum: ["Free", "free", "Pro", "pro"],
+        default: "Free"
+    },
+    planStartDate: {
+        type: Date,
+        default: null
+    },
+    planExpiryDate: {
+        type: Date,
+        default: null
     },
     requestLimit: {
         type: Number,

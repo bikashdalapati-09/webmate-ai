@@ -204,7 +204,7 @@ const Navbar = ({ user, setUser }) => {
                       <span>Personal Workspace</span>
                     </span>
                     <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-[#f0f3f9] px-2 py-0.5 rounded shadow-[2px_2px_4px_#d1d9e6,-2px_-2px_4px_#ffffff]">
-                      <ShieldCheck className="w-3 h-3 text-indigo-600" /> Pro
+                      <ShieldCheck className="w-3 h-3 text-indigo-600" /> {user.plan}
                     </span>
                   </div>
 

@@ -21,10 +21,18 @@ const AssistantDetails = ({
   setIsEditing 
 }) => {
   const planType = user?.plan || 'Free';
-  const requestLimit = user?.requestLimit || 200;
+  
+  // Plan-based message limits
+  const isProPlan = planType === 'Pro' || planType === 'pro';
+  const requestLimit = isProPlan ? 999999 : (user?.requestLimit && user.requestLimit > 0 ? user.requestLimit : 200);
   const totalMessages = user?.totalMessages || 0;
-  const messagesLeft = Math.max(0, requestLimit - totalMessages);
-  const usagePercentage = Math.min(100, Math.round((totalMessages / requestLimit) * 100));
+  const messagesLeft = isProPlan ? '∞' : Math.max(0, requestLimit - totalMessages);
+  const usagePercentage = isProPlan ? 0 : Math.min(100, Math.round((totalMessages / requestLimit) * 100));
+  
+  // Pro plan expiry (1 month from plan start)
+  const planStartDate = user?.planStartDate ? new Date(user.planStartDate) : null;
+  const planExpiryDate = planStartDate ? new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const daysRemainingInPlan = planExpiryDate ? Math.ceil((planExpiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
   return (
     <div className="min-h-screen bg-[#f0f3f9] text-slate-800 p-4 sm:p-8 font-sans flex items-center justify-center">
@@ -83,41 +91,67 @@ const AssistantDetails = ({
           </div>
 
           {/* Messages Remaining Metric */}
-          <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2">
+          <div className={`p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2 ${isProPlan ? 'ring-2 ring-emerald-300' : ''}`}>
             <div className="flex items-center justify-between text-slate-500">
               <span className="text-xs font-black uppercase tracking-wider">Messages Remaining</span>
               <MessageSquare className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-2xl font-black text-slate-900">{messagesLeft}</span>
-              <span className="text-xs font-bold text-slate-400">/ {requestLimit} limit</span>
+              {isProPlan ? (
+                <>
+                  <span className="text-2xl font-black text-emerald-600">{messagesLeft}</span>
+                  <span className="text-xs font-bold text-slate-400">Unlimited</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl font-black text-slate-900">{messagesLeft}</span>
+                  <span className="text-xs font-bold text-slate-400">/ 200 limit</span>
+                </>
+              )}
             </div>
             
-            {/* Custom Usage Bar */}
-            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-2">
-              <div 
-                className={`h-full transition-all duration-300 ${usagePercentage > 85 ? 'bg-rose-500' : 'bg-indigo-600'}`} 
-                style={{ width: `${usagePercentage}%` }}
-              />
-            </div>
+            {/* Custom Usage Bar or Pro Info */}
+            {isProPlan ? (
+              <div className="text-[10px] font-bold text-emerald-600 pt-2">
+                ✓ Valid for {daysRemainingInPlan && daysRemainingInPlan > 0 ? daysRemainingInPlan : 0} more days
+              </div>
+            ) : (
+              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-2">
+                <div 
+                  className={`h-full transition-all duration-300 ${usagePercentage > 85 ? 'bg-rose-500' : 'bg-indigo-600'}`} 
+                  style={{ width: `${usagePercentage}%` }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Active Tier Callout */}
-          <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2">
+          <div className={`p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2 ${isProPlan ? 'ring-2 ring-emerald-300' : ''}`}>
             <div className="flex items-center justify-between text-slate-500">
               <span className="text-xs font-black uppercase tracking-wider">Current Tier</span>
               <Zap className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="text-xl font-black text-slate-900 pt-1">
-              {planType} Tier
+              {planType} Plan
             </div>
-            {planType === 'Free' ? (
+            {isProPlan ? (
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold text-emerald-600">
+                  ✓ Unlimited messages & premium features
+                </p>
+                {daysRemainingInPlan && daysRemainingInPlan > 0 ? (
+                  <p className="text-[10px] font-medium text-emerald-500">
+                    Valid for {daysRemainingInPlan} more days
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-medium text-amber-600">
+                    Plan expires soon. Renew to maintain access.
+                  </p>
+                )}
+              </div>
+            ) : (
               <p className="text-[11px] font-bold text-indigo-600 cursor-pointer hover:underline">
                 Upgrade to Pro for unlimited usage & custom domain branding →
-              </p>
-            ) : (
-              <p className="text-[11px] font-bold text-emerald-600">
-                ✓ Premium response speeds & unlimited queries enabled
               </p>
             )}
           </div>

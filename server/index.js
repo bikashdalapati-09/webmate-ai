@@ -6,7 +6,7 @@ import authRouter from './Routes/auth.route.js'
 import cors from 'cors'
 import userRouter from './Routes/user.route.js'
 import assistantRouter from './Routes/assistant.route.js'
-import { aiService } from './services/aiService.js'
+import billingRouter from './Routes/billing.route.js'
 
 config()
 
@@ -34,6 +34,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth",privateCors, authRouter)
 app.use("/api/user",privateCors,  userRouter)
+app.use("/api/billing",privateCors,  billingRouter)
+
 app.use("/api/assistant",publicCors,  assistantRouter)
 
 app.listen(port, () => {

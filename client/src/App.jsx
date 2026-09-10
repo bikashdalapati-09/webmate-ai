@@ -24,7 +24,6 @@ const App = () => {
         const res = await axios.get(serverURL + "/api/user/current-user", {
           withCredentials: true,
         });
-        console.log(res.data);
         setUser(res.data);
         setLoading(false);
       } catch (error) {
@@ -49,7 +48,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Home user={user}/>} />
                 <Route path="/builder" element={<Builder user={user} setUser={setUser}/>} />
-                <Route path="/billing" element={<Billing user={user}/>} />
+                <Route path="/billing" element={<Billing user={user} setUser={setUser}/>} />
                 <Route path="*" element={<Navigate to="/"/>}/>
               </Routes>
             </ProtectedRoute>

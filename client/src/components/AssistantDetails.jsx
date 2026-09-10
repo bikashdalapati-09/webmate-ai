@@ -6,10 +6,18 @@ const AssistantDetails = ({ user, formData, CLIENT_URL, onEdit }) => {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   const planType = user?.plan || 'Free';
-  const requestLimit = user?.requestLimit || 200;
+  
+  // Plan-based message limits
+  const isProPlan = planType === 'Pro' || planType === 'pro';
+  const requestLimit = isProPlan ? 999999 : (user?.requestLimit && user.requestLimit > 0 ? user.requestLimit : 200);
   const totalMessages = user?.totalMessages || 0;
-  const messagesLeft = Math.max(0, requestLimit - totalMessages);
-  const usagePercentage = Math.min(100, Math.round((totalMessages / requestLimit) * 100));
+  const messagesLeft = isProPlan ? '∞' : Math.max(0, requestLimit - totalMessages);
+  const usagePercentage = isProPlan ? 0 : Math.min(100, Math.round((totalMessages / requestLimit) * 100));
+  
+  // Pro plan expiry (1 month from plan start)
+  const planStartDate = user?.planStartDate ? new Date(user.planStartDate) : null;
+  const planExpiryDate = planStartDate ? new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const daysRemainingInPlan = planExpiryDate ? Math.ceil((planExpiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
   const embedCode = `<script src="${CLIENT_URL}/assistant.js" data-user-id="${user?._id}"></script>`;
 
@@ -68,18 +76,33 @@ const AssistantDetails = ({ user, formData, CLIENT_URL, onEdit }) => {
             </div>
           </div>
 
-          <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2">
+          <div className={`p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2 ${isProPlan ? 'ring-2 ring-emerald-300' : ''}`}>
             <div className="flex items-center justify-between text-slate-500">
               <span className="text-xs font-black uppercase tracking-wider">Messages Remaining</span>
               <MessageSquare className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-2xl font-black text-slate-900">{messagesLeft}</span>
-              <span className="text-xs font-bold text-slate-400">/ {requestLimit} limit</span>
+              {isProPlan ? (
+                <>
+                  <span className="text-2xl font-black text-emerald-600">{messagesLeft}</span>
+                  <span className="text-xs font-bold text-slate-400">Unlimited</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl font-black text-slate-900">{messagesLeft}</span>
+                  <span className="text-xs font-bold text-slate-400">/ 200 limit</span>
+                </>
+              )}
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-2">
-              <div className={`h-full ${usagePercentage > 85 ? 'bg-rose-500' : 'bg-indigo-600'}`} style={{ width: `${usagePercentage}%` }} />
-            </div>
+            {isProPlan ? (
+              <div className="text-[10px] font-bold text-emerald-600 pt-2">
+                ✓ Valid for {daysRemainingInPlan && daysRemainingInPlan > 0 ? daysRemainingInPlan : 0} more days
+              </div>
+            ) : (
+              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-2">
+                <div className={`h-full ${usagePercentage > 85 ? 'bg-rose-500' : 'bg-indigo-600'}`} style={{ width: `${usagePercentage}%` }} />
+              </div>
+            )}
           </div>
 
           <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 space-y-2">

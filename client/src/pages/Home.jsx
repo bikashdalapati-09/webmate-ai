@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Sparkles, 
   Bot, 
@@ -22,19 +23,24 @@ import {
   MessageSquare,
   Send,
   Radio,
-  Edit3
+  Edit3,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { serverURL } from '../App';
 
 const Home = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
+  // --- Ref for Auto-Scrolling ---
+  const chatContainerRef = useRef(null);
+
   // --- Dynamic Assistant Name (Default: "Echo") ---
   const [assistantName, setAssistantName] = useState('Echo');
   const [isEditingName, setIsEditingName] = useState(false);
 
-  // --- Project Guide Bot UI State ---
+  // --- Project Guide Bot UI & API State ---
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -43,8 +49,19 @@ const Home = () => {
     }
   ]);
   const [inputQuery, setInputQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // --- Voice Assistant State & Your 4 Original Themes (Enhanced Glass) ---
+  // Auto-scroll to bottom whenever messages update or loading state changes
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, isLoading]);
+
+  // --- Voice Assistant State & Themes ---
   const [isListening, setIsListening] = useState(true);
   const [voiceStatus, setVoiceStatus] = useState('Listening...');
   const [activeVoiceTheme, setActiveVoiceTheme] = useState('glass');
@@ -79,7 +96,6 @@ const Home = () => {
     {
       id: 'glass',
       name: 'Glass',
-      // Pure water glass transparency effect
       cardBg: 'bg-white/10 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_0_rgba(31,38,135,0.08)] text-slate-900 relative overflow-hidden',
       headerBg: 'bg-white/20 backdrop-blur-md border border-white/60 shadow-inner',
       orbBg: 'bg-gradient-to-tr from-sky-400/80 via-cyan-300/70 to-indigo-400/80 shadow-[0_0_40px_rgba(56,189,248,0.4)]',
@@ -120,13 +136,40 @@ const Home = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputQuery.trim()) return;
+    if (!inputQuery.trim() || isLoading) return;
 
-    const userMsg = { id: Date.now(), sender: 'user', text: inputQuery };
+    const userMessageText = inputQuery;
+    const userMsg = { id: Date.now(), sender: 'user', text: userMessageText };
+    
     setMessages((prev) => [...prev, userMsg]);
     setInputQuery('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${serverURL}/api/user/project-ai-response`, {
+        query: userMessageText,
+      },{withCredentials: true});
+
+      const botMsg = {
+        id: Date.now() + 1,
+        sender: 'bot',
+        text: response.data.result
+      };
+      
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (error) {
+      console.error('Error fetching AI response:', error);
+      const errorMsg = {
+        id: Date.now() + 1,
+        sender: 'bot',
+        text: 'Sorry, I ran into an error connecting to the backend. Please try again.'
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleVoiceAssistant = () => {
@@ -180,7 +223,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-[#f0f3f9] text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
       
-      {/* Embedded CSS Animations */}
+      {/* Embedded CSS Animations & Scrollbar Hiding Utility */}
       <style>{`
         @keyframes floatSlow {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -190,15 +233,20 @@ const Home = () => {
           0%, 100% { transform: scale(1); opacity: 0.9; }
           50% { transform: scale(1.08); opacity: 1; }
         }
-        @keyframes wavePulse {
-          0%, 100% { height: 25%; }
-          50% { height: 100%; }
-        }
         .animate-float {
           animation: floatSlow 5s ease-in-out infinite;
         }
         .animate-orb {
           animation: orbGlow 3s ease-in-out infinite;
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
         }
       `}</style>
 
@@ -267,7 +315,7 @@ const Home = () => {
                     <MessageSquare className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black text-slate-900">Project Guide Bot</h3>
+                    <h3 className="text-xs font-black text-slate-900">WebMate Co-Pilot</h3>
                     <p className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Assistant
                     </p>
@@ -278,7 +326,11 @@ const Home = () => {
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 px-1 py-2 my-1 custom-scrollbar">
+              {/* Chat Message Window (Hidden Scrollbar + Auto Scroll Ref) */}
+              <div 
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto space-y-3 px-1 py-2 my-1 no-scrollbar"
+              >
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -295,6 +347,16 @@ const Home = () => {
                     </div>
                   </div>
                 ))}
+                
+                {/* Loading State Indicator */}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="p-3 rounded-2xl text-xs bg-[#f0f3f9] text-slate-500 shadow-[inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff] flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                      <span>Bot is thinking...</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSendMessage} className="mt-2 flex items-center gap-2">
@@ -303,11 +365,13 @@ const Home = () => {
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
                   placeholder="Ask project guide..."
-                  className="flex-1 bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] text-xs font-medium text-slate-800 placeholder-slate-400 px-4 py-3 rounded-2xl focus:outline-none"
+                  disabled={isLoading}
+                  className="flex-1 bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] text-xs font-medium text-slate-800 placeholder-slate-400 px-4 py-3 rounded-2xl focus:outline-none disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  className="p-3 rounded-2xl bg-indigo-600 text-white shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] hover:bg-indigo-700 active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)] transition-all cursor-pointer"
+                  disabled={isLoading}
+                  className="p-3 rounded-2xl bg-indigo-600 text-white shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] hover:bg-indigo-700 active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)] transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -369,7 +433,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* VOICE ASSISTANT DEMO - CUSTOM NAME + 4 ORIGINAL THEMES + ANIMATIONS */}
+      {/* VOICE ASSISTANT DEMO */}
       <section className="py-8 px-4 sm:px-6 max-w-7xl mx-auto">
         <div className="p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 space-y-6">
           
@@ -385,7 +449,6 @@ const Home = () => {
             </p>
           </div>
 
-          {/* Assistant Name Customizer Control */}
           <div className="flex items-center justify-center gap-2 max-w-xs mx-auto p-2 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
             <span className="text-xs font-black text-slate-500 ml-2">Name:</span>
             {isEditingName ? (
@@ -409,7 +472,6 @@ const Home = () => {
             )}
           </div>
 
-          {/* Theme Selector (Your 4 Original Themes) */}
           <div className="flex flex-wrap items-center justify-center gap-2 max-w-sm mx-auto">
             {voiceThemes.map((theme) => (
               <button
@@ -427,11 +489,9 @@ const Home = () => {
             ))}
           </div>
 
-          {/* WIDGET DISPLAY - EXACT MATCH SIZE (w-[320px] h-[460px]) */}
           <div className="flex justify-center w-full">
             <div className={`w-[320px] h-[460px] rounded-[38px] p-6 flex flex-col justify-between items-center text-center transition-all duration-300 relative ${currentTheme.cardBg}`}>
               
-              {/* Glass Theme Special Water Reflections */}
               {activeVoiceTheme === 'glass' && (
                 <>
                   <div className="absolute -top-16 -left-16 w-40 h-40 bg-sky-200/50 rounded-full blur-2xl pointer-events-none animate-pulse" />
@@ -440,7 +500,6 @@ const Home = () => {
                 </>
               )}
 
-              {/* Header Info Bar */}
               <div className={`flex items-center justify-between w-full p-2.5 rounded-2xl transition-all duration-300 relative z-10 ${currentTheme.headerBg}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black shadow-sm">
@@ -458,7 +517,6 @@ const Home = () => {
                 </span>
               </div>
 
-              {/* Animated Floating Avatar Orb */}
               <div className="relative my-auto flex items-center justify-center py-2 z-10">
                 {isListening && (
                   <>
@@ -474,7 +532,6 @@ const Home = () => {
                 </div>
               </div>
 
-              {/* Typography & Wave Visualizer */}
               <div className="w-full space-y-3 mb-1 z-10">
                 <div className="space-y-0.5">
                   <h3 className="text-xl font-black tracking-tight">
@@ -505,7 +562,6 @@ const Home = () => {
                 </p>
               </div>
 
-              {/* Bottom Mic Button */}
               <div className="z-10 pb-1">
                 <button
                   onClick={toggleVoiceAssistant}
