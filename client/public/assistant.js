@@ -2,8 +2,7 @@
   const script = document.currentScript;
   const userId = script?.dataset?.userId;
 
-  // Default theme:
-  // "light" | "dark" | "glass" | "neon"
+  // Default theme: "light" | "dark" | "glass" | "neon"
   const defaultTheme = "light";
 
   // Inject CSS Stylesheet
@@ -16,12 +15,10 @@
 
   const getValidTheme = (theme) => {
     const validThemes = ["light", "dark", "glass", "neon"];
-
     return validThemes.includes(theme) ? theme : defaultTheme;
   };
 
   const popup = document.createElement("div");
-
   popup.className = `echo-popup theme-${defaultTheme}`;
 
   popup.innerHTML = `
@@ -30,7 +27,6 @@
       <!-- Top Navigation Header -->
       <div class="echo-header">
         <div class="echo-header-left">
-
           <div class="echo-header-icon">
             <svg
               width="15"
@@ -50,13 +46,11 @@
 
           <div class="echo-header-info">
             <span class="echo-header-title">Echo AI</span>
-
             <div class="echo-header-status">
               <span class="echo-status-dot"></span>
               <span class="echo-status-text">Live Audio</span>
             </div>
           </div>
-
         </div>
 
         <div class="echo-header-badge">
@@ -69,9 +63,7 @@
 
         <!-- Central Glowing Animated Orb -->
         <div class="echo-orb-wrap">
-
           <div class="echo-orb-glow"></div>
-
           <div class="echo-orb">
             <svg
               class="echo-orb-sparkle"
@@ -87,7 +79,6 @@
               <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-3.5-6.5l-2.1 2.1m-8.8 8.8l-2.1 2.1m0 -13l2.1 2.1m8.8 8.8l2.1 2.1"></path>
             </svg>
           </div>
-
         </div>
 
         <!-- Title & Subtitle Headings -->
@@ -119,12 +110,31 @@
 
         <!-- Status Bar Banner -->
         <div class="echo-status">
-          Listening...
+          Tap button to Speak or type below
+        </div>
+
+        <!-- Integrated Chat Input Bar -->
+        <div class="echo-chat-input-bar" style="display: flex; align-items: center; gap: 8px; margin: 10px 0; width: 100%; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 6px 6px 6px 14px; border-radius: 24px; box-sizing: border-box;">
+          <input 
+            type="text" 
+            class="echo-chat-input" 
+            placeholder="Type your message..." 
+            style="flex: 1; background: transparent; border: none; outline: none; color: inherit; font-size: 13px; font-family: inherit;"
+          />
+          <button 
+            class="echo-chat-send" 
+            aria-label="Send message"
+            style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: none; background: #6366f1; color: #fff; cursor: pointer; flex-shrink: 0;"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
         </div>
 
         <!-- Microphone Action Button -->
         <div class="echo-button">
-
           <button
             class="echo-mic"
             aria-label="Toggle Microphone"
@@ -144,7 +154,6 @@
               <line x1="12" y1="19" x2="12" y2="22"></line>
             </svg>
           </button>
-
         </div>
 
       </div>
@@ -157,7 +166,6 @@
   // Floating Launcher Toggle Button
   // --------------------------------------------------
   const button = document.createElement("button");
-
   button.className = `echo-btn theme-${defaultTheme}`;
   button.setAttribute("aria-label", "Toggle AI Assistant");
 
@@ -174,55 +182,41 @@
 
   button.addEventListener("click", () => {
     open = !open;
-
     popup.classList.toggle("echo-open", open);
     button.classList.toggle("echo-active", open);
   });
 
   const applyConfig = () => {
-    if (!assistantConfig) {
-      return;
-    }
+    if (!assistantConfig) return;
 
     const theme = getValidTheme(assistantConfig.theme);
 
-    // Remove only existing theme classes
     popup.classList.remove(
       "theme-light",
       "theme-dark",
       "theme-glass",
-      "theme-neon",
+      "theme-neon"
     );
 
     button.classList.remove(
       "theme-light",
       "theme-dark",
       "theme-glass",
-      "theme-neon",
+      "theme-neon"
     );
 
-    // Add new theme
     popup.classList.add(`theme-${theme}`);
     button.classList.add(`theme-${theme}`);
 
     const assistantName = assistantConfig.assistantName?.trim() || "Echo AI";
-
     const title = popup.querySelector(".echo-title");
-
-    if (title) {
-      title.textContent = `Hello! I'm ${assistantName}`;
-    }
+    if (title) title.textContent = `Hello! I'm ${assistantName}`;
 
     const headerTitle = popup.querySelector(".echo-header-title");
-
-    if (headerTitle) {
-      headerTitle.textContent = assistantName;
-    }
+    if (headerTitle) headerTitle.textContent = assistantName;
 
     const businessName = assistantConfig.businessName?.trim() || "my website";
-
     const subTitle = popup.querySelector(".echo-sub");
-
     if (subTitle) {
       subTitle.innerHTML = `
         Welcome to <span class="echo-accent">${businessName}</span>.
@@ -234,14 +228,13 @@
     try {
       if (!userId) {
         console.warn(
-          "Echo AI: userId is missing from the script data-user-id attribute.",
+          "Echo AI: userId is missing from the script data-user-id attribute."
         );
-
         return;
       }
 
       const res = await fetch(
-        `http://localhost:3000/api/assistant/config/${encodeURIComponent(userId)}`,
+        `http://localhost:3000/api/assistant/config/${encodeURIComponent(userId)}`
       );
 
       if (!res.ok) {
@@ -249,17 +242,9 @@
       }
 
       const data = await res.json();
-
-      console.log("Assistant config:", data);
-
-      if (!data?.user) {
-        console.warn("Echo AI: No assistant configuration found.");
-
-        return;
-      }
+      if (!data?.user) return;
 
       assistantConfig = data.user;
-
       applyConfig();
     } catch (error) {
       console.error("Echo AI: Assistant load error:", error);
@@ -267,4 +252,150 @@
   };
 
   loadAssistant();
+
+  const status = popup.querySelector(".echo-status");
+  const wave = popup.querySelector(".echo-wave");
+  const userText = popup.querySelector(".echo-user-text");
+  const aiText = popup.querySelector(".echo-ai-text");
+  const mic = popup.querySelector(".echo-mic");
+  const chatInput = popup.querySelector(".echo-chat-input");
+  const chatSendBtn = popup.querySelector(".echo-chat-send");
+
+  // speak
+  const speak = (text) => {
+    window.speechSynthesis.cancel();
+
+    aiText.innerHTML = text;
+    status.innerHTML = "AI Speaking...";
+    wave.style.opacity = "1";
+
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
+    speech.volume = 1;
+
+    speech.onend = () => {
+      status.innerHTML = "Tap button to Speak or type below";
+      wave.style.opacity = "0";
+    };
+
+    speech.onerror = () => {
+      status.innerHTML = "Tap button to Speak or type below";
+      wave.style.opacity = "0";
+    };
+
+    window.speechSynthesis.speak(speech);
+  };
+
+  // Reusable backend query sender
+  const sendQueryToBackend = async (queryText) => {
+    if (!queryText || !queryText.trim()) return;
+
+    userText.innerHTML = "You: " + queryText;
+    status.innerHTML = "Thinking...";
+    wave.style.opacity = "0";
+
+    try {
+      const res = await fetch("http://localhost:3000/api/assistant/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: queryText,
+          userId: userId,
+          currentPath: window.location.pathname,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.action === "navigate") {
+          speak(data.response || data.aiResponse || "Navigating...");
+          setTimeout(() => {
+            window.location.href = data.path;
+          }, 1500);
+        } else {
+          speak(data.aiResponse || data.response || "Here is your answer.");
+        }
+      } else {
+        speak("Check Your Plan");
+      }
+    } catch (error) {
+      console.error("Echo AI ask endpoint error:", error);
+      speak("Failed to reach assistant server.");
+    }
+  };
+
+  // Text Chat Event Handlers
+  chatSendBtn.addEventListener("click", () => {
+    const val = chatInput.value;
+    chatInput.value = "";
+    sendQueryToBackend(val);
+  });
+
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const val = chatInput.value;
+      chatInput.value = "";
+      sendQueryToBackend(val);
+    }
+  });
+
+  // Speech Recognition Logic
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    mic.onclick = () => {
+      window.speechSynthesis.cancel();
+      wave.style.opacity = "1";
+      status.innerHTML = "Listening...";
+      userText.innerHTML = "";
+      aiText.innerHTML = "";
+
+      try {
+        recognition.start();
+      } catch (err) {
+        recognition.stop();
+        setTimeout(() => {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.warn("Speech recognition restart prevented:", e);
+          }
+        }, 100);
+      }
+    };
+
+    recognition.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      recognition.stop();
+      sendQueryToBackend(text);
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech Recognition Error:", e);
+      status.innerHTML = "Tap to Speak";
+      wave.style.opacity = "0";
+    };
+
+    recognition.onend = () => {
+      if (status.innerHTML === "Listening...") {
+        wave.style.opacity = "0";
+        status.innerHTML = "Tap button to Speak or type below";
+      }
+    };
+  } else {
+    status.innerHTML = "Speech recognition not supported";
+    mic.disabled = true;
+  }
 })();

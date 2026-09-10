@@ -6,6 +6,7 @@ import authRouter from './Routes/auth.route.js'
 import cors from 'cors'
 import userRouter from './Routes/user.route.js'
 import assistantRouter from './Routes/assistant.route.js'
+import { aiService } from './services/aiService.js'
 
 config()
 

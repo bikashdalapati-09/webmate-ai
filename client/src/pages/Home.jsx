@@ -107,13 +107,12 @@ const Home = () => {
 
   const currentTheme = voiceThemes.find(t => t.id === activeVoiceTheme) || voiceThemes[0];
 
-  const sampleEmbedCode = `<script 
-  src="https://cdn.webmate.ai/v1/widget.js" 
-  data-agent-id="wm_agent_8f921d0a" 
-  data-name="${assistantName}"
-  data-theme="${activeVoiceTheme}"
-  async defer>
-</script>`;
+  const sampleEmbedCode = `  <body>
+  <script 
+  src="http://your-site/assistant.js" 
+  data-user-id="*****************">
+  </script>
+  </body>`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(sampleEmbedCode);

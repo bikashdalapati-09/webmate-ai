@@ -22,6 +22,11 @@ const Navbar = ({ user, setUser }) => {
   const navigate = useNavigate();
 
   // Navigation Handlers
+  const handleHomeClick = () => {
+    setIsDropdownOpen(false);
+    navigate('/');
+  };
+
   const handleBuilderClick = () => {
     setIsDropdownOpen(false);
     navigate('/builder');
@@ -63,12 +68,11 @@ const Navbar = ({ user, setUser }) => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[#f0f3f9] backdrop-blur-md border-b border-white/60 shadow-[0_10px_20px_-5px_rgba(163,177,198,0.35)] font-sans antialiased text-slate-900">
-      {/* Container updated: removed max-w-7xl, tightened horizontal padding */}
       <div className="w-full px-3 sm:px-6 h-14 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Brand Logo & Name */}
         <div 
-          onClick={handleBuilderClick}
+          onClick={handleHomeClick}
           className="flex items-center gap-2 sm:gap-3 group cursor-pointer shrink-0 p-1.5 sm:p-2 rounded-2xl bg-[#f0f3f9] shadow-[5px_5px_10px_#d1d9e6,-5px_-5px_10px_#ffffff] active:shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] transition-all duration-300"
         >
           <div className="relative flex items-center justify-center p-1 sm:p-1.5 rounded-xl bg-[#f0f3f9] shadow-[inset_2px_2px_5px_#d1d9e6,inset_-2px_-2px_5px_#ffffff] transition-all duration-500 group-hover:scale-105">

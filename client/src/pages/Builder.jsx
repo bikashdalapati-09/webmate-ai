@@ -23,7 +23,8 @@ import {
   Copy,
   Zap,
   MessageSquare,
-  Globe
+  Globe,
+  XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,6 +56,50 @@ const Builder = ({ user, setUser }) => {
 
   // Local state for dynamic route addition
   const [newPage, setNewPage] = useState({ name: '', path: '', keywords: '' });
+
+  // Status handler reading directly from user.geminiStatus: "active" | "quota_exceed" | "invalid"
+  const apiKeyStatus = user?.geminiStatus || (user?.geminiApiKey ? 'active' : 'invalid');
+
+  const renderApiKeyStatusUI = () => {
+    switch (apiKeyStatus) {
+      case 'active':
+        return (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <span className="text-sm font-black text-slate-900">Active</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 ml-auto flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Operational
+            </span>
+          </div>
+        );
+
+      case 'quota_exceed':
+        return (
+          <div className="flex items-center gap-2 pt-1">
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <span className="text-sm font-black text-slate-900">Quota Exceeded</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 ml-auto flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-600" /> Rate Limited
+            </span>
+          </div>
+        );
+
+      case 'invalid':
+      default:
+        return (
+          <div className="flex items-center gap-2 pt-1">
+            <div className="w-3 h-3 rounded-full bg-rose-500" />
+            <span className="text-sm font-black text-slate-900">Invalid Key</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 ml-auto flex items-center gap-1">
+              <XCircle className="w-3 h-3 text-rose-600" /> Action Required
+            </span>
+          </div>
+        );
+    }
+  };
 
   // Input Handler for top-level text fields
   const handleChange = (e) => {
@@ -201,22 +246,21 @@ const Builder = ({ user, setUser }) => {
           {/* Quick Metrics & Status Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Gemini API Status */}
+            {/* Gemini API Status Card */}
             <div className="p-6 rounded-3xl bg-[#f0f3f9] shadow-[10px_10px_20px_#d1d9e6,-10px_-10px_20px_#ffffff] border border-white/60 flex flex-col justify-between space-y-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-slate-500">
                   <span className="text-xs font-black uppercase tracking-wider">Gemini API Status</span>
                   <Key className="w-4 h-4 text-indigo-600" />
                 </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <div className={`w-3 h-3 rounded-full ${user?.geminiApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                  <span className="text-sm font-black text-slate-900">
-                    {user?.geminiApiKey ? 'Custom API Key Active' : 'Default Platform Key'}
-                  </span>
-                </div>
+                
+                {renderApiKeyStatusUI()}
               </div>
+              
               <p className="text-[11px] font-medium text-slate-500 pt-2">
-                {user?.geminiApiKey ? 'Using custom Gemini API credentials.' : 'Using shared system key quotas.'}
+                {apiKeyStatus === 'active' && 'Gemini API key is configured and active.'}
+                {apiKeyStatus === 'quota_exceed' && 'API quota reached. Update key or upgrade tier.'}
+                {apiKeyStatus === 'invalid' && 'API key is missing or unauthorized.'}
               </p>
             </div>
 
