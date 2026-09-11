@@ -16,7 +16,10 @@ import {
   Bot,
   Globe2,
   Lock,
-  Headphones
+  Headphones,
+  FileText,
+  Database,
+  Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -130,13 +133,22 @@ const Billing = ({ user, setUser }) => {
 
   // Feature Breakdown
   const featuresMatrix = [
+    // --- Core AI & Knowledge Base (Highlighted RAG Features) ---
+    { name: 'Custom Bot Training / RAG', free: false, pro: 'Full Support (PDF, Docs, URLs)', icon: Bot, highlight: true },
+    { name: 'Knowledge Base Documents', free: '1 File (Max 2MB)', pro: 'Unlimited Uploads (Max 50MB/file)', icon: FileText, highlight: true },
+    { name: 'Vector Storage & Indexing', free: '50 Chunks', pro: 'Unlimited Vector Chunks', icon: Database, highlight: true },
+
+    // --- Message & Engine Performance ---
     { name: 'Monthly Message Allowance', free: '200 Messages', pro: 'Unlimited', icon: MessageSquareText },
     { name: 'AI Model Engine', free: 'Standard (Gemini Flash)', pro: 'High-Reasoning (Gemini Pro)', icon: Cpu },
-    { name: 'Custom Bot Training / RAG', free: false, pro: true, icon: Bot },
-    { name: 'Domain Embedding & Widgets', free: '1 Website', pro: 'Unlimited Websites', icon: Globe2 },
     { name: 'Response Latency', free: 'Standard Queue', pro: 'Ultra-Fast Priority', icon: Zap },
-    { name: 'Analytics & Conversation Logs', free: '3-Day Retention', pro: 'Lifetime Logs & Export', icon: Clock },
-    { name: 'API Key Access', free: false, pro: true, icon: Lock },
+
+    // --- Deployment & Integration ---
+    { name: 'Domain Embedding & Widgets', free: '1 Website', pro: 'Unlimited Websites', icon: Globe2 },
+    { name: 'Custom Widget Branding', free: 'Powered by WebMate', pro: 'Remove Branding & Custom Themes', icon: Sparkles },
+
+    // --- Lead Gen & Analytics ---
+    { name: 'Lead Collection & Forms', free: 'Basic (Email Only)', pro: 'Custom Form Fields & CRM Sync', icon: Users },
     { name: 'Support SLA', free: 'Community Forum', pro: '24/7 Priority Support', icon: Headphones },
   ];
 
@@ -424,58 +436,93 @@ const Billing = ({ user, setUser }) => {
 
         </div>
 
-        {/* Feature Breakdown Table */}
+        {/* Enhanced Full Feature Matrix Section */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="rounded-2xl p-5 sm:p-6 bg-[#e8ecf4] shadow-[8px_8px_16px_#c5c9d1,-8px_-8px_16px_#ffffff] space-y-4"
+          className="rounded-2xl p-5 sm:p-7 bg-[#e8ecf4] shadow-[8px_8px_16px_#c5c9d1,-8px_-8px_16px_#ffffff] space-y-5"
         >
-          <div className="flex items-center justify-between border-b border-slate-300/40 pb-3">
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" /> Full Feature Matrix
-            </h3>
-            <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Compare plan capabilities</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-300/50 pb-4 gap-2">
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600 fill-indigo-500/20" /> Full Feature Comparison
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Explore standard vs pro AI workspace limits</p>
+            </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold text-indigo-600 bg-[#e8ecf4] shadow-[inset_2px_2px_4px_#c5c9d1,inset_-2px_-2px_4px_#ffffff]">
+              <Zap className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500/20" /> Advanced RAG Enabled
+            </div>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-300/50">
-                  <th className="py-3 px-3">Capabilities</th>
-                  <th className="py-3 px-3">Free Starter</th>
-                  <th className="py-3 px-3 text-indigo-600">Pro Tier (₹19)</th>
+                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-300/60">
+                  <th className="py-3.5 px-4 w-1/2">Capabilities & Limits</th>
+                  <th className="py-3.5 px-4 w-1/4 text-center">Free Starter</th>
+                  <th className="py-3.5 px-4 w-1/4 text-center text-indigo-600">Pro Tier (₹19)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300/40 font-medium text-slate-600">
                 {featuresMatrix.map((item, idx) => {
                   const Icon = item.icon;
                   return (
-                    <tr key={idx} className="hover:bg-slate-200/30 transition-colors">
-                      <td className="py-3 px-3 font-semibold text-slate-800 flex items-center gap-2">
-                        <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        {item.name}
+                    <tr 
+                      key={idx} 
+                      className={`transition-all ${
+                        item.highlight 
+                          ? 'bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent hover:from-indigo-500/15' 
+                          : 'hover:bg-slate-200/40'
+                      }`}
+                    >
+                      <td className="py-3.5 px-4 font-semibold text-slate-800">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-1.5 rounded-lg shadow-[2px_2px_4px_#c5c9d1,-2px_-2px_4px_#ffffff] bg-[#e8ecf4] ${
+                            item.highlight ? 'text-indigo-600' : 'text-slate-500'
+                          }`}>
+                            <Icon className="w-4 h-4 shrink-0" />
+                          </div>
+                          <span className="flex items-center gap-2">
+                            {item.name}
+                            {item.highlight && (
+                              <span className="text-[9px] bg-indigo-600 text-white font-extrabold uppercase px-1.5 py-0.5 rounded-md shadow-xs">
+                                RAG
+                              </span>
+                            )}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3.5 px-4 text-center">
                         {typeof item.free === 'boolean' ? (
                           item.free ? (
-                            <Check className="w-4 h-4 text-emerald-500" />
+                            <div className="inline-flex p-1 rounded-full bg-emerald-500/10 text-emerald-600">
+                              <Check className="w-4 h-4" />
+                            </div>
                           ) : (
-                            <X className="w-4 h-4 text-slate-300" />
+                            <div className="inline-flex p-1 rounded-full bg-slate-300/30 text-slate-400">
+                              <X className="w-4 h-4" />
+                            </div>
                           )
                         ) : (
-                          <span>{item.free}</span>
+                          <span className="text-slate-500 font-semibold">{item.free}</span>
                         )}
                       </td>
-                      <td className="py-3 px-3 font-bold text-indigo-600">
+                      <td className="py-3.5 px-4 text-center font-bold">
                         {typeof item.pro === 'boolean' ? (
                           item.pro ? (
-                            <Check className="w-4 h-4 text-indigo-600" />
+                            <div className="inline-flex p-1 rounded-full bg-indigo-600 text-white shadow-xs">
+                              <Check className="w-4 h-4" />
+                            </div>
                           ) : (
-                            <X className="w-4 h-4 text-slate-300" />
+                            <div className="inline-flex p-1 rounded-full bg-slate-300/30 text-slate-400">
+                              <X className="w-4 h-4" />
+                            </div>
                           )
                         ) : (
-                          <span>{item.pro}</span>
+                          <span className={item.highlight ? 'text-indigo-600 font-extrabold' : 'text-slate-800'}>
+                            {item.pro}
+                          </span>
                         )}
                       </td>
                     </tr>
