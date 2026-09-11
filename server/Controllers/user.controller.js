@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import User from "../Models/user.model.js";
 import { aiProjectResponse } from "../services/aiProject.js";
 
@@ -5,19 +6,23 @@ export const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
 
-    if(!user){
-        return res.status(400).json({
-            message: "Failed to get currrent user"
-        })
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to get current user",
+      });
     }
-    return res.status(200).json(user)
+    return res.status(200).json(user);
   } catch (error) {
-    console.log(error)
+    console.error("Error in getCurrentUser:", error);
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to retrieve user",
+    });
   }
 };
 
-
-export const saveAssistant = async(req, res) => {
+export const saveAssistant = async (req, res) => {
   try {
     const {
       assistantName,
@@ -27,14 +32,15 @@ export const saveAssistant = async(req, res) => {
       tone,
       theme,
       geminiApiKey,
-      pages
+      pages,
     } = req.body;
 
-    const user = await User.findById(req.userId)
-    if(!user){
-        return res.status(400).json({
-            message: "Failed to get current user"
-        })
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to get current user",
+      });
     }
 
     user.assistantName = assistantName;
@@ -43,40 +49,67 @@ export const saveAssistant = async(req, res) => {
     user.businessDescription = businessDescription;
     user.tone = tone;
     user.theme = theme;
+    user.pages = pages || [];
+    user.isSetupCompleted = true;
 
-    if(geminiApiKey && geminiApiKey.trim() !== ''){
-      // Basic validation - API key should start with specific patterns
-      if (!geminiApiKey.startsWith('AIzaSy')) {
-        return res.status(400).json({
-          message: "Invalid Gemini API key format. API keys should start with 'AIzaSy'",
-          success: false
-        })
+    // Validate API Key safely without crashing server
+    if (geminiApiKey && typeof geminiApiKey === "string" && geminiApiKey.trim() !== "") {
+      const trimmedKey = geminiApiKey.trim();
+
+      // Basic structure check before calling external network
+      if (trimmedKey.length < 20) {
+        user.geminiApiKey = trimmedKey;
+        user.geminiStatus = "invalid";
+      } else {
+        try {
+          // Attempt a lightweight test ping to Gemini API
+          const genAI = new GoogleGenerativeAI(trimmedKey);
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          
+          await model.generateContent("hello");
+
+          user.geminiApiKey = trimmedKey;
+          user.geminiStatus = "active";
+        } catch (apiError) {
+          console.error("Gemini API Verification Warning:", apiError?.message || apiError);
+
+          const errString = String(apiError?.message || "").toLowerCase();
+
+          // Check if it's a rate/quota issue vs explicitly invalid key
+          if (errString.includes("429") || errString.includes("quota") || errString.includes("resource_exhausted")) {
+            user.geminiApiKey = trimmedKey;
+            user.geminiStatus = "quota_exceed";
+          } else if (errString.includes("api_key_invalid") || errString.includes("400") || errString.includes("unauthorized")) {
+            user.geminiApiKey = trimmedKey;
+            user.geminiStatus = "invalid";
+          } else {
+            // If it's a network glitch/timeout, accept key as active to prevent locking user out
+            user.geminiApiKey = trimmedKey;
+            user.geminiStatus = "active";
+          }
+        }
       }
-      user.geminiApiKey = geminiApiKey
-      user.geminiStatus = "pending" // Will be verified on first use
+    } else {
+      user.geminiApiKey = "";
+      user.geminiStatus = "invalid";
     }
 
-    user.pages = pages || []
-    user.isSetupCompleted = true
-
-    await user.save()
+    await user.save();
 
     return res.status(200).json({
       message: "Assistant saved successfully",
       user: user,
-      success: true
-    })
-
+      success: true,
+    });
   } catch (error) {
-    console.log(`Problem in saveAssistant in user controller`)
-    console.log(error)
+    console.error("Problem in saveAssistant in user controller:", error);
     return res.status(500).json({
       message: "Failed to save assistant configuration",
       success: false,
-      error: error?.message
-    })
+      error: error?.message,
+    });
   }
-}
+};
 
 export const projectAiResponse = async (req, res) => {
   try {
@@ -89,11 +122,11 @@ export const projectAiResponse = async (req, res) => {
       result,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error in projectAiResponse:", error);
 
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error?.message || "Failed to process request",
     });
   }
 };

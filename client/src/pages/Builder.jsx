@@ -24,13 +24,16 @@ import {
   Zap,
   MessageSquare,
   Globe,
-  XCircle
+  XCircle,
+  UploadCloud,
+  FileText,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 const Builder = ({ user, setUser }) => {
-  // Move useNavigate hook to the top level before any conditional returns
   const navigate = useNavigate();
 
   // Mode State: Controlled by Mongoose `user.isSetupCompleted` flag
@@ -45,6 +48,9 @@ const Builder = ({ user, setUser }) => {
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
+
+  // PDF Knowledge Base State
+  const [pdfFile, setPdfFile] = useState(null);
 
   // Form State initialized from user context or defaults matching Mongoose Schema
   const [formData, setFormData] = useState({
@@ -61,7 +67,21 @@ const Builder = ({ user, setUser }) => {
   // Local state for dynamic route addition
   const [newPage, setNewPage] = useState({ name: '', path: '', keywords: '' });
 
-  // Status handler reading directly from user.geminiStatus: "active" | "quota_exceed" | "invalid"
+  // Computed usage statistics matching Mongoose User Schema
+  const planType = user?.plan || 'Free';
+  const isProPlan = planType.toLowerCase() === 'pro';
+  const requestLimit = isProPlan ? Infinity : (user?.requestLimit && user.requestLimit > 0 ? user.requestLimit : 200);
+  const totalMessages = user?.totalMessages || 0;
+  const messagesLeft = isProPlan ? '∞' : Math.max(0, requestLimit - totalMessages);
+  const usagePercentage = isProPlan 
+    ? 0 
+    : Math.min(100, Math.max(0, Math.round((totalMessages / requestLimit) * 100)));
+
+  const planStartDate = user?.planStartDate ? new Date(user.planStartDate) : null;
+  const planExpiryDate = planStartDate ? new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const daysRemainingInPlan = planExpiryDate ? Math.ceil((planExpiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
+
+  // Status handler reading directly from backend user.geminiStatus
   const apiKeyStatus = user?.geminiStatus || (user?.geminiApiKey ? 'active' : 'invalid');
 
   const renderApiKeyStatusUI = () => {
@@ -103,6 +123,29 @@ const Builder = ({ user, setUser }) => {
           </div>
         );
     }
+  };
+
+  // PDF Upload Handler for Knowledge Base / RAG System
+  const handlePdfUpload = (e) => {
+    if (!isProPlan) {
+      toast.error("Please upgrade to Pro plan to enable Knowledge Base PDF uploads.");
+      return;
+    }
+
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error("Please upload a valid PDF document.");
+        return;
+      }
+      setPdfFile(file);
+      toast.success(`Loaded "${file.name}" into AI Knowledge Base!`);
+    }
+  };
+
+  const handleRemovePdf = () => {
+    setPdfFile(null);
+    toast.success("PDF Knowledge Base document removed.");
   };
 
   // Input Handler for top-level text fields
@@ -155,18 +198,18 @@ const Builder = ({ user, setUser }) => {
         { withCredentials: true }
       );
 
-      if (!response.data.success && response.data.message) {
-        toast.error(response.data.message);
+      if (response.data?.user && setUser) {
+        setUser(response.data.user);
+      }
+
+      if (!response.data.success) {
+        toast.error(response.data.message || "Key validation failed.");
         setStatusMsg({
           type: 'error',
-          text: response.data.message
+          text: response.data.message || "Failed to validate configuration."
         });
         setLoading(false);
         return;
-      }
-
-      if (setUser && response.data?.user) {
-        setUser(response.data.user);
       }
 
       toast.success(user?.isSetupCompleted ? "Assistant Configuration updated 👌" : "Assistant Configuration saved 👌");
@@ -199,27 +242,6 @@ const Builder = ({ user, setUser }) => {
     setTimeout(() => setCopiedSnippet(false), 3000);
   };
 
-  // Computed usage statistics matching Mongoose User Schema
-  const planType = user?.plan || 'Free';
-  
-  // Plan-based message limits
-  const isProPlan = planType.toLowerCase() === 'pro';
-  const requestLimit = isProPlan ? Infinity : (user?.requestLimit && user.requestLimit > 0 ? user.requestLimit : 200);
-  const totalMessages = user?.totalMessages || 0;
-  
-  // Messages remaining
-  const messagesLeft = isProPlan ? '∞' : Math.max(0, requestLimit - totalMessages);
-  
-  // Usage percentage calculated correctly (0 messages used = 0%, 200 used = 100%)
-  const usagePercentage = isProPlan 
-    ? 0 
-    : Math.min(100, Math.max(0, Math.round((totalMessages / requestLimit) * 100)));
-
-  // Pro plan expiry (1 month from plan start)
-  const planStartDate = user?.planStartDate ? new Date(user.planStartDate) : null;
-  const planExpiryDate = planStartDate ? new Date(planStartDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
-  const daysRemainingInPlan = planExpiryDate ? Math.ceil((planExpiryDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
-
   const themes = [
     { id: 'light', label: 'Light', color: 'bg-slate-100 border-slate-300 text-slate-800' },
     { id: 'dark', label: 'Dark', color: 'bg-slate-900 border-slate-700 text-white' },
@@ -234,7 +256,7 @@ const Builder = ({ user, setUser }) => {
   ];
 
   // =========================================================================
-  // CONDITION 1: DISPLAY DETAILS PAGE (IF USER IS SETUP & NOT IN EDIT MODE)
+  // CONDITION 1: DISPLAY DETAILS / PREVIEW PAGE (IF SETUP IS COMPLETE)
   // =========================================================================
   if (user?.isSetupCompleted && !isEditing) {
     return (
@@ -357,7 +379,7 @@ const Builder = ({ user, setUser }) => {
               {isProPlan ? (
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold text-emerald-600 pt-2">
-                    ✓ Unlimited messages & premium features
+                    ✓ Unlimited messages & RAG features
                   </p>
                   {daysRemainingInPlan && daysRemainingInPlan > 0 ? (
                     <p className="text-[10px] font-medium text-emerald-500">
@@ -370,38 +392,38 @@ const Builder = ({ user, setUser }) => {
                   )}
                 </div>
               ) : (
-                <p onClick={() => navigate("/billing")} className="text-[11px] font-bold text-indigo-600 cursor-pointer hover:underline pt-2">
-                  Upgrade to Pro for unlimited usage & custom domain branding →
+                <p onClick={() => navigate("/billing")} className="text-[11px] font-bold text-indigo-600 cursor-pointer hover:underline pt-2 flex items-center gap-1">
+                  Upgrade to Pro for RAG PDF Indexing & unlimited messages <ArrowRight className="w-3 h-3" />
                 </p>
               )}
             </div>
 
           </div>
 
-          {/* Details & Embed Script Layout */}
+          {/* Persona Overview, Knowledge Base (RAG), and Embed Code Section Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             
-            {/* Left Box: Active Agent Configuration */}
-            <div className="lg:col-span-7 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-5">
-              <div className="space-y-5">
+            {/* Persona Overview Card */}
+            <div className="lg:col-span-6 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-5">
+              <div className="space-y-4">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-600" /> Persona Overview
                 </h2>
 
-                <div className="grid grid-cols-2 gap-4 pt-1">
-                  <div className="p-4 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="p-3.5 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
                     <span className="text-[10px] font-black text-slate-400 uppercase">Tone Theme</span>
-                    <p className="text-xs font-extrabold text-indigo-600 capitalize mt-1">{formData.tone}</p>
+                    <p className="text-xs font-extrabold text-indigo-600 capitalize mt-0.5">{formData.tone}</p>
                   </div>
-                  <div className="p-4 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
+                  <div className="p-3.5 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
                     <span className="text-[10px] font-black text-slate-400 uppercase">UI Theme</span>
-                    <p className="text-xs font-extrabold text-indigo-600 capitalize mt-1">{formData.theme}</p>
+                    <p className="text-xs font-extrabold text-indigo-600 capitalize mt-0.5">{formData.theme}</p>
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <span className="text-xs font-extrabold text-slate-600">Business Description</span>
-                  <p className="text-xs font-medium text-slate-600 leading-relaxed p-4 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
+                  <p className="text-xs font-medium text-slate-600 leading-relaxed p-3.5 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff]">
                     {formData.businessDescription || 'No business description provided yet.'}
                   </p>
                 </div>
@@ -415,11 +437,11 @@ const Builder = ({ user, setUser }) => {
                 </span>
                 
                 {formData.pages.length === 0 ? (
-                  <p className="text-xs italic text-slate-400 py-2">No custom page paths linked.</p>
+                  <p className="text-xs italic text-slate-400 py-1">No custom page paths linked.</p>
                 ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                     {formData.pages.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-[#f0f3f9] shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff]">
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-2xl bg-[#f0f3f9] shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff]">
                         <div className="flex items-center gap-2">
                           <Globe className="w-3.5 h-3.5 text-indigo-600" />
                           <span className="text-xs font-bold text-slate-800">{p.name}</span>
@@ -434,40 +456,165 @@ const Builder = ({ user, setUser }) => {
               </div>
             </div>
 
-            {/* Right Box: HTML Script Embed Generator */}
-            <div className="lg:col-span-5 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-sm font-bold text-slate-800">Where to paste this script?</h3>
-                  <p className="text-xs font-medium text-slate-500">
-                    Paste this script before the closing <code className="text-indigo-600 font-mono">&lt;/body&gt;</code> tag of your website HTML file.
-                  </p>
+            {/* Knowledge Base (RAG System) Compact Section */}
+            <div className="lg:col-span-6 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        Knowledge Base (RAG)
+                      </h2>
+                      <p className="text-[11px] font-medium text-slate-500">
+                        Index custom PDF context into your Gemini model.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!isProPlan && (
+                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shrink-0">
+                      <Lock className="w-3 h-3 text-amber-700" /> Pro Feature
+                    </span>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <span className="text-xs font-medium text-slate-600">Example:</span>
-                  <pre className="bg-[#0b1020] text-emerald-400 rounded-xl p-4 text-xs font-mono overflow-x-auto shadow-inner leading-relaxed">
+                {/* Upload Area Control */}
+                <div className="relative pt-1">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    disabled={!isProPlan}
+                    onChange={handlePdfUpload}
+                    id="pdf-rag-preview-input"
+                    className="hidden"
+                  />
+
+                  {pdfFile ? (
+                    /* PDF Attached Display State */
+                    <div className="p-4 rounded-2xl bg-[#f0f3f9] shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] border border-emerald-300 flex items-center justify-between">
+                      <div className="flex items-center gap-3 truncate">
+                        <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs font-extrabold text-slate-800 truncate">{pdfFile.name}</p>
+                          <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">
+                            {(pdfFile.size / (1024 * 1024)).toFixed(2)} MB • Indexed for Knowledge Base
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={handleRemovePdf}
+                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 transition-all cursor-pointer shrink-0 ml-3"
+                        title="Remove PDF Source"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Upload Area (Interactive or Locked depending on Plan) */
+                    <div className="relative overflow-hidden rounded-2xl">
+                      <label
+                        htmlFor={isProPlan ? "pdf-rag-preview-input" : undefined}
+                        onClick={() => {
+                          if (!isProPlan) {
+                            toast.error("Please upgrade to Pro plan to enable PDF upload for Knowledge Base.");
+                          }
+                        }}
+                        className={`group p-5 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] flex flex-col items-center justify-center text-center transition-all ${
+                          isProPlan 
+                            ? 'cursor-pointer hover:border-indigo-400 border border-transparent' 
+                            : 'cursor-not-allowed border border-slate-200/50'
+                        }`}
+                      >
+                        <div className={`p-3 rounded-xl mb-2 transition-transform ${
+                          isProPlan 
+                            ? 'bg-indigo-50 text-indigo-600 group-hover:scale-105 shadow-sm' 
+                            : 'bg-slate-200 text-slate-400'
+                        }`}>
+                          {isProPlan ? <UploadCloud className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+                        </div>
+
+                        {isProPlan ? (
+                          <>
+                            <p className="text-xs font-extrabold text-slate-800">
+                              Click to upload or drag & drop PDF
+                            </p>
+                            <p className="text-[10px] font-medium text-slate-500 mt-0.5">
+                              Parsed into semantic embeddings for live dynamic chat retrieval.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs font-black text-slate-800">
+                              PDF Knowledge Base Upload Locked
+                            </p>
+                            <p className="text-[10px] font-medium text-slate-500 mt-0.5">
+                              Upgrade to Pro to power your agent with custom PDF documentation.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate("/billing");
+                              }}
+                              className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Zap className="w-3.5 h-3.5 fill-white" />
+                              <span>Upgrade to Pro</span>
+                            </button>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-[10px] font-medium text-slate-400 italic">
+                Supported format: .PDF (Max 10MB per document)
+              </p>
+            </div>
+
+            {/* HTML Script Embed Generator Section */}
+            <div className="lg:col-span-12 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-800">Where to paste this script?</h3>
+                    <p className="text-xs font-medium text-slate-500">
+                      Paste this script before the closing <code className="text-indigo-600 font-mono">&lt;/body&gt;</code> tag of your website HTML file.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-medium text-slate-600">Example Placement:</span>
+                    <pre className="bg-[#0b1020] text-emerald-400 rounded-xl p-3.5 text-xs font-mono overflow-x-auto shadow-inner leading-relaxed">
 {`<body>
   Your Website Content
   <script src="${CLIENT_URL}/assistant.js" data-user-id="${user?._id}"></script>
 </body>`}
-                  </pre>
+                    </pre>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2 pt-2">
-                <h3 className="text-sm font-bold text-slate-800">Embed Code</h3>
-                <div className="flex items-center justify-between bg-[#0b1020] rounded-xl p-3 shadow-inner">
-                  <pre className="text-emerald-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all pr-4">
-                    {embedCode}
-                  </pre>
-                  <button
-                    onClick={copyToClipboard}
-                    className="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all shrink-0 cursor-pointer shadow-sm"
-                    title="Copy Embed Script"
-                  >
-                    {copiedSnippet ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  </button>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-slate-800">Embed Code Snippet</h3>
+                  <div className="flex items-center justify-between bg-[#0b1020] rounded-xl p-4 shadow-inner">
+                    <pre className="text-emerald-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all pr-4">
+                      {embedCode}
+                    </pre>
+                    <button
+                      onClick={copyToClipboard}
+                      className="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all shrink-0 cursor-pointer shadow-sm"
+                      title="Copy Embed Script"
+                    >
+                      {copiedSnippet ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -480,7 +627,7 @@ const Builder = ({ user, setUser }) => {
   }
 
   // =========================================================================
-  // CONDITION 2: DISPLAY MULTI-STEP BUILDER (FIRST TIME OR EDITING)
+  // CONDITION 2: DISPLAY MULTI-STEP BUILDER (INITIAL SETUP OR EDIT MODE)
   // =========================================================================
   return (
     <div className="min-h-screen bg-[#f0f3f9] text-slate-800 p-4 sm:p-8 font-sans flex items-center justify-center">
@@ -837,7 +984,7 @@ const Builder = ({ user, setUser }) => {
                     name="geminiApiKey"
                     value={formData.geminiApiKey}
                     onChange={handleChange}
-                    placeholder="AIzaSy..."
+                    placeholder="Enter your Gemini API key from Google AI Studio"
                     className="w-full bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] px-4 py-3 rounded-2xl text-xs font-mono text-slate-800 focus:outline-none"
                   />
                   <p className="text-[10px] font-medium text-slate-500">

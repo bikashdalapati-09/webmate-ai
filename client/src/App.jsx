@@ -37,7 +37,7 @@ const App = () => {
 
   return (
     <>
-    <Toaster position="top-right"/>
+    <Toaster position="bottom-left"/>
       <Routes>
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route

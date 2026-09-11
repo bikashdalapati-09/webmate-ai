@@ -1,5 +1,4 @@
 import User from "../Models/user.model.js";
-import { aiProjectResponse } from "../services/aiProject.js";
 import { aiService } from "../services/aiService.js";
 
 export const getAssistantConfig = async (req, res) => {
@@ -45,13 +44,6 @@ export const askAssistant = async (req, res) => {
       });
     }
 
-    if (!user.geminiApiKey) {
-      return res.status(400).json({
-        success: false,
-        message: "Gemini API key not found",
-      });
-    }
-
     // Plan & Limit Checks
     if (user.plan === "free" && user.totalMessages >= user.requestLimit) {
       return res.status(403).json({
@@ -60,7 +52,6 @@ export const askAssistant = async (req, res) => {
       });
     }
 
-    // Double check spelling with your Mongoose schema (e.g. proExipireAt vs proExpiresAt)
     if (
       user.plan === "pro" &&
       user.proExipireAt &&
@@ -88,14 +79,14 @@ export const askAssistant = async (req, res) => {
       ];
 
       const wantsNavigation = navigationWords.some((word) =>
-        cleanMessage.startsWith(word),
+        cleanMessage.startsWith(word)
       );
 
       if (wantsNavigation) {
         const matchedPage = user.pages?.find((page) =>
           page.keywords.some((keyword) =>
-            cleanMessage.includes(keyword.toLowerCase()),
-          ),
+            cleanMessage.includes(keyword.toLowerCase())
+          )
         );
 
         if (matchedPage) {
@@ -122,26 +113,19 @@ export const askAssistant = async (req, res) => {
       }
     }
 
-    // Call LangGraph Service (Pass object payload)
-    let aiResult;
-    try {
-      aiResult = await aiService({
-        query: message,
-        user,
-        apiKey: user.geminiApiKey,
-      });
-    } catch (aiError) {
-      console.error("AI Service Error:", aiError);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to process AI request. Please check your API key.",
-      });
-    }
+    // Unified AI Service Call (Handles both general queries and tool-based RAG search)
+    const apiKey = user.geminiApiKey || process.env.GEMINI_API_KEY;
 
-    if (!aiResult.success) {
-      return res.status(aiResult.status || 500).json({
+    const result = await aiService({
+      query: message,
+      user,
+      apiKey,
+    });
+
+    if (!result.success) {
+      return res.status(result.status || 500).json({
         success: false,
-        message: aiResult.error || "AI processing failed",
+        message: result.error || "Failed to generate AI response.",
       });
     }
 
@@ -153,7 +137,7 @@ export const askAssistant = async (req, res) => {
 
     return res.json({
       success: true,
-      response: aiResult.response,
+      response: result.response,
     });
   } catch (error) {
     console.error("Ask Assistant Controller Error:", error);
@@ -163,5 +147,3 @@ export const askAssistant = async (req, res) => {
     });
   }
 };
-
-
