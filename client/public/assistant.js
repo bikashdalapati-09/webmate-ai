@@ -114,17 +114,15 @@
         </div>
 
         <!-- Integrated Chat Input Bar -->
-        <div class="echo-chat-input-bar" style="display: flex; align-items: center; gap: 8px; margin: 10px 0; width: 100%; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 6px 6px 6px 14px; border-radius: 24px; box-sizing: border-box;">
+        <div class="echo-chat-input-bar">
           <input 
             type="text" 
             class="echo-chat-input" 
             placeholder="Type your message..." 
-            style="flex: 1; background: transparent; border: none; outline: none; color: inherit; font-size: 13px; font-family: inherit;"
           />
           <button 
             class="echo-chat-send" 
             aria-label="Send message"
-            style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: none; background: #6366f1; color: #fff; cursor: pointer; flex-shrink: 0;"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>

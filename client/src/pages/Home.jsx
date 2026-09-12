@@ -369,7 +369,7 @@ const Home = () => {
                   type="text"
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
-                  placeholder="Ask project guide..."
+                  placeholder="Ask me anything, i will assist you..."
                   disabled={isLoading}
                   className="flex-1 bg-slate-100/70 border border-slate-200/50 text-xs font-medium text-slate-800 placeholder-slate-400 px-4 py-3 rounded-full focus:outline-none focus:bg-white transition-all disabled:opacity-50"
                 />

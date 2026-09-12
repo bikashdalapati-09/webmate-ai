@@ -23,9 +23,9 @@ export const login = async (req, res) => {
 
         const token = await getToken(user._id);
         res.cookie("token", token, {
-            httpOnly: true,
+            httpOnly: false,
             secure: true,
-            sameSite: "strict",
+            sameSite: "none",
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
@@ -40,7 +40,7 @@ export const login = async (req, res) => {
 export const logout = async(req, res) => {
     try {
         await res.clearCookie("token", {
-            httpOnly: true,
+            httpOnly: false,
             secure: true,
             sameSite: "strict"
         })
