@@ -232,7 +232,7 @@
       }
 
       const res = await fetch(
-        `http://localhost:3000/api/assistant/config/${encodeURIComponent(userId)}`
+        `https://webmate-ai-server.onrender.com/api/assistant/config/${encodeURIComponent(userId)}`
       );
 
       if (!res.ok) {
