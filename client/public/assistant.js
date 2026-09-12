@@ -8,7 +8,7 @@
   // Inject CSS Stylesheet
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = "http://localhost:5173/assistant.css";
+  link.href = "https://webmate-ai-hepn.onrender.com/assistant.css";
   document.head.appendChild(link);
 
   let assistantConfig = null;
@@ -169,7 +169,7 @@
 
   button.innerHTML = `
     <img
-      src="http://localhost:5173/logo.svg"
+      src="https://webmate-ai-hepn.onrender.com/logo.svg"
       alt="Echo AI"
     />
   `;
