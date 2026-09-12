@@ -1,104 +1,120 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
 const pageSchema = new mongoose.Schema({
-    name: String,
+  name: String,
+  path: String,
+  keywords: {
+    type: [String],
+    default: []
+  }
+}, { _id: false });
 
-    path: String,
-
-    keywords: {
-        type: [String],
-        default: []
-    }
-}, {_id: false})
+const pdfSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    default: ""
+  },
+  size: {
+    type: Number, // Stored in bytes or formatted size
+    default: 0
+  }
+}, { _id: false });
 
 const userSchema = new mongoose.Schema({
-    name:{
-        type: String,
-        required: true,
-    },
-    email:{
-        type: String,
-        required: true,
-        unique: true
-    },
-    assistantName:{
-        type: String,
-        default: "Echo"
-    },
-    businessName: {
-        type: String,
-        default:""
-    },
-    businessType:{
-        type: String,
-        default: ""
-    },
-    businessDescription: {
-        type: String,
-        default: ""
-    },
-    tone:{
-        type: String,
-        enum: ["friendly", "professional", "sales"],
-        default: 'friendly'
-    },
-    theme: {
-        type: String,
-        enum:["light", "dark", "glass", "neon"],
-        default: "dark"
-    },
-    enableVoice: {
-        type: Boolean,
-        default: true
-    },
-    pages: {
-        type: [pageSchema],
-        default: []
-    },
-    enableNavigation: {
-        type: Boolean,
-        default: true
-    },
-    geminiApiKey: {
-        type: String,
-        default: ""
-    },
-    geminiStatus: {
-        type: String,
-        enum: ["active", "quota_exceed", "invalid"],
-        default: "active"
-    },
-    totalMessages: {
-        type: Number,
-        default: 0
-    },
-    plan: {
-        type: String,
-        enum: ["Free", "free", "Pro", "pro"],
-        default: "Free"
-    },
-    planStartDate: {
-        type: Date,
-        default: null
-    },
-    planExpiryDate: {
-        type: Date,
-        default: null
-    },
-    requestLimit: {
-        type: Number,
-        default: 200
-    },
-    proExipireAt: {
-        type: Date,
-        default: null
-    },
-    isSetupCompleted: {
-        type: Boolean,
-        default: false
-    }
-}, {timestamps: true})
+  name: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  assistantName: {
+    type: String,
+    default: "Echo"
+  },
+  businessName: {
+    type: String,
+    default: ""
+  },
+  businessType: {
+    type: String,
+    default: ""
+  },
+  businessDescription: {
+    type: String,
+    default: ""
+  },
+  tone: {
+    type: String,
+    enum: ["friendly", "professional", "sales"],
+    default: 'friendly'
+  },
+  theme: {
+    type: String,
+    enum: ["light", "dark", "glass", "neon"],
+    default: "dark"
+  },
+  enableVoice: {
+    type: Boolean,
+    default: true
+  },
+  pages: {
+    type: [pageSchema],
+    default: []
+  },
+  enableNavigation: {
+    type: Boolean,
+    default: true
+  },
+  geminiApiKey: {
+    type: String,
+    default: ""
+  },
+  geminiStatus: {
+    type: String,
+    enum: ["active", "quota_exceed", "invalid"],
+    default: "active"
+  },
+  totalMessages: {
+    type: Number,
+    default: 0
+  },
+  plan: {
+    type: String,
+    enum: ["Free", "free", "Pro", "pro"],
+    default: "Free"
+  },
+  planStartDate: {
+    type: Date,
+    default: null
+  },
+  planExpiryDate: {
+    type: Date,
+    default: null
+  },
+  requestLimit: {
+    type: Number,
+    default: 200
+  },
+  proExipireAt: {
+    type: Date,
+    default: null
+  },
+  isSetupCompleted: {
+    type: Boolean,
+    default: false
+  },
+  isPdfUploaded: {
+    type: Boolean,
+    default: false
+  },
+  pdfDetails: {
+    type: pdfSchema,
+    default: null
+  }
+}, { timestamps: true });
 
-
-const User = mongoose.model("User", userSchema)
-export default User
+const User = mongoose.model("User", userSchema);
+export default User;

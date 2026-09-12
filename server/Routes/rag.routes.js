@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { isAuth } from "../Middleware/isAuth.js";
-import { uploadAndVectorizePdf } from "../Controllers/ragController.js";
+import { deletePdf, uploadAndVectorizePdf } from "../Controllers/ragController.js";
 
 const ragRouter = express.Router();
 
@@ -18,5 +18,6 @@ const upload = multer({
 });
 
 ragRouter.post("/upload-pdf", isAuth, upload.single("pdf"), uploadAndVectorizePdf);
+ragRouter.delete("/delete-pdf/:userId", isAuth, deletePdf);
 
 export default ragRouter;

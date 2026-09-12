@@ -28,7 +28,10 @@ import {
   UploadCloud,
   FileText,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Database,
+  Cpu,
+  Layers
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +53,13 @@ const Builder = ({ user, setUser }) => {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   // PDF Knowledge Base State
-  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfSuccess, setPdfSuccess] = useState(false);
+  const [pdfDeleting, setPdfDeleting] = useState(false);
+
+  // Computed PDF status from User prop
+  const hasUploadedPdf = Boolean(user?.isPdfUploaded && user?.pdfDetails?.name);
+  const currentPdfDetails = user?.pdfDetails || null;
 
   // Form State initialized from user context or defaults matching Mongoose Schema
   const [formData, setFormData] = useState({
@@ -125,27 +134,75 @@ const Builder = ({ user, setUser }) => {
     }
   };
 
-  // PDF Upload Handler for Knowledge Base / RAG System
-  const handlePdfUpload = (e) => {
+  // PDF Upload Handler requesting API endpoint with loading and success animation states
+  const handlePdfUpload = async (e) => {
     if (!isProPlan) {
       toast.error("Please upgrade to Pro plan to enable Knowledge Base PDF uploads.");
       return;
     }
 
     const file = e.target.files[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast.error("Please upload a valid PDF document.");
-        return;
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error("Please upload a valid PDF document.");
+      return;
+    }
+
+    const data = new FormData();
+    data.append('pdf', file);
+
+    setPdfUploading(true);
+    setPdfSuccess(false);
+
+    try {
+      const response = await axios.post(`${serverURL}/api/rag/upload-pdf`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true
+      });
+
+      if (response.data?.success) {
+        if (response.data.user && setUser) {
+          setUser(response.data.user);
+        }
+        setPdfSuccess(true);
+        toast.success(`"${file.name}" uploaded and indexed successfully!`);
+      } else {
+        toast.error(response.data?.message || "Failed to upload PDF.");
       }
-      setPdfFile(file);
-      toast.success(`Loaded "${file.name}" into AI Knowledge Base!`);
+    } catch (error) {
+      console.error("PDF Upload Error:", error);
+      toast.error(error.response?.data?.message || "Error uploading PDF. Please try again.");
+    } finally {
+      setPdfUploading(false);
     }
   };
 
-  const handleRemovePdf = () => {
-    setPdfFile(null);
-    toast.success("PDF Knowledge Base document removed.");
+  // Delete Handler for removing PDF Knowledge Base from database and local state
+  const handleDeletePdf = async () => {
+    if (!user?._id) return;
+    setPdfDeleting(true);
+
+    try {
+      const response = await axios.delete(`${serverURL}/api/rag/delete-pdf/${user._id}`, {
+        withCredentials: true
+      });
+
+      if (response.data?.success) {
+        if (response.data.user && setUser) {
+          setUser(response.data.user);
+        }
+        setPdfSuccess(false);
+        toast.success("PDF Knowledge Base document deleted successfully!");
+      } else {
+        toast.error(response.data?.message || "Failed to delete PDF Knowledge Base.");
+      }
+    } catch (error) {
+      console.error("PDF Delete Error:", error);
+      toast.error(error.response?.data?.message || "Error deleting PDF Knowledge Base.");
+    } finally {
+      setPdfDeleting(false);
+    }
   };
 
   // Input Handler for top-level text fields
@@ -456,66 +513,117 @@ const Builder = ({ user, setUser }) => {
               </div>
             </div>
 
-            {/* Knowledge Base (RAG System) Compact Section */}
-            <div className="lg:col-span-6 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-indigo-600" />
+            {/* Knowledge Base (RAG System) Section - REDESIGNED MODERN GRID */}
+            <div className="lg:col-span-6 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-5">
+              
+              {/* Header Container */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner border border-indigo-100">
+                      <Database className="w-5 h-5" />
+                    </div>
                     <div>
-                      <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                        Knowledge Base (RAG)
-                      </h2>
-                      <p className="text-[11px] font-medium text-slate-500">
-                        Index custom PDF context into your Gemini model.
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">
+                          Knowledge Base
+                        </h2>
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">
+                          RAG Engine
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                        Dynamic vector storage for extended context answers.
                       </p>
                     </div>
                   </div>
 
                   {!isProPlan && (
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shrink-0">
-                      <Lock className="w-3 h-3 text-amber-700" /> Pro Feature
+                    <span className="text-[10px] font-black uppercase px-3 py-1 rounded-xl bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1.5 shrink-0 shadow-sm">
+                      <Lock className="w-3.5 h-3.5 text-amber-700" /> Pro Only
                     </span>
                   )}
                 </div>
 
-                {/* Upload Area Control */}
-                <div className="relative pt-1">
+                {/* Upload & Document View Module */}
+                <div className="relative">
                   <input
                     type="file"
                     accept=".pdf"
-                    disabled={!isProPlan}
+                    disabled={!isProPlan || pdfUploading}
                     onChange={handlePdfUpload}
                     id="pdf-rag-preview-input"
                     className="hidden"
                   />
 
-                  {pdfFile ? (
-                    /* PDF Attached Display State */
-                    <div className="p-4 rounded-2xl bg-[#f0f3f9] shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] border border-emerald-300 flex items-center justify-between">
-                      <div className="flex items-center gap-3 truncate">
-                        <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div className="truncate">
-                          <p className="text-xs font-extrabold text-slate-800 truncate">{pdfFile.name}</p>
-                          <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">
-                            {(pdfFile.size / (1024 * 1024)).toFixed(2)} MB • Indexed for Knowledge Base
-                          </p>
-                        </div>
+                  {pdfUploading ? (
+                    /* Loading State Animation */
+                    <div className="p-8 rounded-2xl bg-[#f0f3f9] shadow-[inset_4px_4px_8px_#d1d9e6,inset_-4px_-4px_8px_#ffffff] flex flex-col items-center justify-center text-center space-y-3">
+                      <div className="relative flex items-center justify-center">
+                        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+                        <Cpu className="w-4 h-4 text-indigo-600 absolute" />
                       </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-black text-slate-800 animate-pulse">
+                          Processing PDF & Vector Indexing...
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-400">
+                          Extracting text chunks & generating embeddings
+                        </p>
+                      </div>
+                    </div>
+                  ) : hasUploadedPdf ? (
+                    /* Active Indexed Document Card */
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#f0f3f9] shadow-[3px_3px_8px_#d1d9e6,-3px_-3px_8px_#ffffff] border border-emerald-500/20 flex flex-col space-y-3">
                       
-                      <button
-                        type="button"
-                        onClick={handleRemovePdf}
-                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 transition-all cursor-pointer shrink-0 ml-3"
-                        title="Remove PDF Source"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shadow-inner shrink-0">
+                            <FileText className="w-6 h-6" />
+                          </div>
+
+                          <div className="min-w-0 space-y-1">
+                            <h4 className="text-xs font-black text-slate-900 truncate tracking-tight">
+                              {currentPdfDetails?.name}
+                            </h4>
+                            <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold text-slate-500">
+                              <span className="text-slate-600">
+                                {currentPdfDetails?.size ? (currentPdfDetails.size / (1024 * 1024)).toFixed(2) : "0.00"} MB
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                              <span className="text-emerald-600 font-extrabold flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-600 stroke-[3]" /> Active Vector Store
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Neumorphic Trash Delete Trigger */}
+                        <button
+                          type="button"
+                          onClick={handleDeletePdf}
+                          disabled={pdfDeleting}
+                          className="w-10 h-10 rounded-2xl bg-[#f0f3f9] text-rose-500 shadow-[4px_4px_8px_#d1d9e6,-4px_-4px_8px_#ffffff] hover:shadow-[1px_1px_3px_#d1d9e6,-1px_-1px_3px_#ffffff] active:shadow-[inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff] hover:bg-rose-50/60 flex items-center justify-center transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                          title="Remove Document"
+                        >
+                          {pdfDeleting ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Dynamic Context Pipeline Info Badge */}
+                      <div className="p-2.5 rounded-xl bg-slate-200/40 shadow-inner flex items-center justify-between text-[10px] font-bold text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-indigo-600" /> Similarity Search Ready
+                        </span>
+                        <span className="text-indigo-600 font-mono">PDF → Embeddings</span>
+                      </div>
                     </div>
                   ) : (
-                    /* Upload Area (Interactive or Locked depending on Plan) */
+                    /* Locked / Empty Upload Interactive Box */
                     <div className="relative overflow-hidden rounded-2xl">
                       <label
                         htmlFor={isProPlan ? "pdf-rag-preview-input" : undefined}
@@ -524,36 +632,36 @@ const Builder = ({ user, setUser }) => {
                             toast.error("Please upgrade to Pro plan to enable PDF upload for Knowledge Base.");
                           }
                         }}
-                        className={`group p-5 rounded-2xl bg-[#f0f3f9] shadow-[inset_3px_3px_6px_#d1d9e6,inset_-3px_-3px_6px_#ffffff] flex flex-col items-center justify-center text-center transition-all ${
+                        className={`group p-6 rounded-2xl bg-[#f0f3f9] shadow-[inset_4px_4px_8px_#d1d9e6,inset_-4px_-4px_8px_#ffffff] flex flex-col items-center justify-center text-center transition-all ${
                           isProPlan 
-                            ? 'cursor-pointer hover:border-indigo-400 border border-transparent' 
-                            : 'cursor-not-allowed border border-slate-200/50'
+                            ? 'cursor-pointer hover:bg-[#ebf0f7]' 
+                            : 'cursor-not-allowed'
                         }`}
                       >
-                        <div className={`p-3 rounded-xl mb-2 transition-transform ${
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform ${
                           isProPlan 
-                            ? 'bg-indigo-50 text-indigo-600 group-hover:scale-105 shadow-sm' 
-                            : 'bg-slate-200 text-slate-400'
+                            ? 'bg-indigo-600 text-white group-hover:scale-110 shadow-md' 
+                            : 'bg-slate-300 text-slate-500'
                         }`}>
                           {isProPlan ? <UploadCloud className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
                         </div>
 
                         {isProPlan ? (
-                          <>
-                            <p className="text-xs font-extrabold text-slate-800">
-                              Click to upload or drag & drop PDF
+                          <div className="space-y-1">
+                            <p className="text-xs font-black text-slate-900">
+                              Upload Document (.PDF)
                             </p>
-                            <p className="text-[10px] font-medium text-slate-500 mt-0.5">
-                              Parsed into semantic embeddings for live dynamic chat retrieval.
+                            <p className="text-[11px] font-semibold text-slate-500 max-w-xs mx-auto">
+                              Drop file here or click to index business guidelines, documents, or FAQs.
                             </p>
-                          </>
+                          </div>
                         ) : (
-                          <>
-                            <p className="text-xs font-black text-slate-800">
-                              PDF Knowledge Base Upload Locked
+                          <div className="space-y-2 flex flex-col items-center">
+                            <p className="text-xs font-black text-slate-900">
+                              Knowledge Base Upload Locked
                             </p>
-                            <p className="text-[10px] font-medium text-slate-500 mt-0.5">
-                              Upgrade to Pro to power your agent with custom PDF documentation.
+                            <p className="text-[10px] font-medium text-slate-500 max-w-xs">
+                              Upgrade to Pro tier to unlock dynamic vector semantic context for your Gemini agent.
                             </p>
                             <button
                               type="button"
@@ -561,12 +669,12 @@ const Builder = ({ user, setUser }) => {
                                 e.stopPropagation();
                                 navigate("/billing");
                               }}
-                              className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] transition-all cursor-pointer flex items-center gap-1.5"
+                              className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold shadow-[3px_3px_6px_#d1d9e6,-3px_-3px_6px_#ffffff] transition-all cursor-pointer flex items-center gap-1.5"
                             >
                               <Zap className="w-3.5 h-3.5 fill-white" />
                               <span>Upgrade to Pro</span>
                             </button>
-                          </>
+                          </div>
                         )}
                       </label>
                     </div>
@@ -574,9 +682,18 @@ const Builder = ({ user, setUser }) => {
                 </div>
               </div>
 
-              <p className="text-[10px] font-medium text-slate-400 italic">
-                Supported format: .PDF (Max 10MB per document)
-              </p>
+              {/* RAG Feature Callouts Grid */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/80">
+                <div className="p-2.5 rounded-xl bg-[#f0f3f9] shadow-[inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff] text-center">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Max File Size</span>
+                  <span className="text-xs font-black text-slate-800">10 MB Document</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#f0f3f9] shadow-[inset_2px_2px_4px_#d1d9e6,inset_-2px_-2px_4px_#ffffff] text-center">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Vector Storage</span>
+                  <span className="text-xs font-black text-indigo-600">Dynamic RAG</span>
+                </div>
+              </div>
+
             </div>
 
             {/* HTML Script Embed Generator Section */}
@@ -896,7 +1013,7 @@ const Builder = ({ user, setUser }) => {
                       placeholder="Path (e.g. /pricing)"
                       value={newPage.path}
                       onChange={(e) => setNewPage({ ...newPage, path: e.target.value })}
-                      className="bg-white px-3 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none shadow-sm"
+                      className="bg-[#f0f3f9] px-3 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none shadow-sm"
                     />
                     <input
                       type="text"
