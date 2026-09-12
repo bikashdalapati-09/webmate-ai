@@ -17,7 +17,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }))
 app.use(cookieParser())
 
 const privateCors = cors({
-    origin:["http://localhost:5173"],
+    origin:["https://webmate-ai-hepn.onrender.com"],
     credentials: true
 })
 
