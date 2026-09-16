@@ -9,10 +9,10 @@ WebMate AI is a modern, full-stack AI SaaS platform designed to embed intelligen
 * **📦 Embeddable AI Agent Script:** Generate lightweight, drop-in JavaScript widgets (`assistant.js`) to instantly embed dynamic AI chat assistants onto any external site.
 * **📄 Document Processing & RAG Engine:** Upload and parse complex PDF documents into vector embeddings using `gemini-embedding-2` for accurate, context-grounded semantic responses.
 * **🎯 Vector Database Retrieval:** High-speed semantic similarity matching powered by Qdrant vector database storage.
-* **🤖 AI Mock Interview & Assistant Workflows:** Built-in interactive agents capable of dynamic question generation, analysis, and custom user assistance.
+* **🤖 AI Assistant Workflows:** Built-in interactive agents capable of dynamic question generation, analysis, and custom user assistance.
 * **💳 Token-Based Billing System:** Integrated Razorpay payment gateway enabling token top-ups and flexible subscription management.
 * **🔐 Multi-Provider Authentication:** Secure user authentication using JSON Web Tokens (JWT) along with Firebase Google Single Sign-On (SSO).
-* **🎨 Apple-Inspired UI Design:** Built with custom Tailwind CSS and Framer Motion animations, featuring dynamic notch elements, glassmorphism styling, and interactive desktop-like widgets.
+* **🎨 Neomorphism UI Design:** Built with custom Tailwind CSS and Framer Motion animations, Neomorphism stylings.
 * **⚡ Real-Time Communication:** Express backend optimized with CORS configuration for cross-origin widget communication and low-latency interaction.
 
 ---
