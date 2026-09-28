@@ -12,51 +12,55 @@ import Billing from "./pages/Billing"
 import {Toaster} from "react-hot-toast"
 
 export const serverURL = "https://webmate-ai-server.onrender.com";
-export const CLIENT_URL = "https://webmate-ai-hepn.onrender.com";
-
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const res = await axios.get(serverURL + "/api/user/current-user", {
+export const CLIENT_URL = "https://webmate-ai-hepn.onrender.com"; 
+ 
+const App = () => { 
+  const [user, setUser] = useState(null); 
+  const [loading, setLoading] = useState(true); 
+ 
+  useEffect(() => { 
+    const fetchMe = async () => { 
+      try { 
+        const res = await axios.get(serverURL + "/api/user/current-user", { 
           withCredentials: true,
-        });
-        setUser(res.data);
+          timeout: 5000,
+        }); 
+        setUser(res.data); 
+      } catch (error) { 
+        if (error.response?.status !== 401) {
+          console.log(error);
+        }
+        setUser(null);
+      } finally {
         setLoading(false);
-      } catch (error) {
-        setLoading(false);
-        console.log(error);
       }
-    };
-
-    fetchMe();
-  }, []);
-
-  return (
-    <>
-    <Toaster position="bottom-left"/>
-      <Routes>
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute user={user} loading={loading}>
-              <Navbar user={user} setUser={setUser}/>
-              <Routes>
-                <Route path="/" element={<Home user={user}/>} />
-                <Route path="/builder" element={<Builder user={user} setUser={setUser}/>} />
-                <Route path="/billing" element={<Billing user={user} setUser={setUser}/>} />
-                <Route path="*" element={<Navigate to="/"/>}/>
-              </Routes>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </>
-  );
-};
-
+    }; 
+ 
+    fetchMe(); 
+  }, []); 
+ 
+  return ( 
+    <> 
+    <Toaster position="bottom-left"/> 
+      <Routes> 
+        <Route path="/login" element={<Login setUser={setUser} />} /> 
+        <Route 
+          path="/*" 
+          element={ 
+            <ProtectedRoute user={user} loading={loading}> 
+              <Navbar user={user} setUser={setUser}/> 
+              <Routes> 
+                <Route path="/" element={<Home user={user}/>} /> 
+                <Route path="/builder" element={<Builder user={user} setUser={setUser}/>} /> 
+                <Route path="/billing" element={<Billing user={user} setUser={setUser}/>} /> 
+                <Route path="*" element={<Navigate to="/"/>}/> 
+              </Routes> 
+            </ProtectedRoute> 
+          } 
+        /> 
+      </Routes> 
+    </> 
+  ); 
+}; 
+ 
 export default App;
