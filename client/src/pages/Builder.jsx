@@ -464,7 +464,7 @@ const Builder = ({ user, setUser }) => {
             <div className="lg:col-span-6 p-6 sm:p-8 rounded-3xl bg-[#f0f3f9] shadow-[12px_12px_24px_#d1d9e6,-12px_-12px_24px_#ffffff] border border-white/60 flex flex-col justify-between space-y-5">
               <div className="space-y-4">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600" /> Persona Overview
+                  <Sparkles className="w-4 h-4 text-indigo-600" /> Personal Overview
                 </h2>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
