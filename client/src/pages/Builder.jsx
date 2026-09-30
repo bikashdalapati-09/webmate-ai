@@ -768,7 +768,7 @@ const Builder = ({ user, setUser }) => {
               <div className="space-y-1">
                 <h2 className="text-base font-black text-slate-900">Hi there! I'm {formData.assistantName || 'Echo'}</h2>
                 <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                  Configure my persona, website behavior, theme aesthetics, and domain routing to match your brand seamlessly.
+                  Configure my personal, website behavior, theme aesthetics, and domain routing to match your brand seamlessly.
                 </p>
               </div>
             </div>
