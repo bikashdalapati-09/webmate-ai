@@ -2,6 +2,25 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import User from "../Models/user.model.js";
 import { aiProjectResponse } from "../services/aiProject.js";
 
+export const syncUserPlanStatus = async (user) => {
+  if (!user) return user;
+
+  const currentPlan = String(user.plan || "Free").toLowerCase();
+  const expiryDate = user.planExpiryDate ? new Date(user.planExpiryDate) : null;
+
+  const isExpired = currentPlan === "pro" && expiryDate && expiryDate.getTime() <= Date.now();
+
+  if (isExpired) {
+    user.plan = "Free";
+    user.planStartDate = null;
+    user.planExpiryDate = null;
+    user.proExipireAt = null;
+    await user.save();
+  }
+
+  return user;
+};
+
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -12,6 +31,9 @@ export const getCurrentUser = async (req, res) => {
         message: "Failed to get current user",
       });
     }
+
+    await syncUserPlanStatus(user);
+
     return res.status(200).json(user);
   } catch (error) {
     console.error("Error in getCurrentUser:", error);
@@ -42,6 +64,8 @@ export const saveAssistant = async (req, res) => {
         message: "Failed to get current user",
       });
     }
+
+    await syncUserPlanStatus(user);
 
     user.assistantName = assistantName;
     user.businessName = businessName;
